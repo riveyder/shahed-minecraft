@@ -1,0 +1,17 @@
+{
+  "item.shahed.controller": "Пульт управления",
+  "item.shahed.fpv_goggles": "FPV-очки",
+  "item.shahed.drone": "Дрон SHAHED.exe",
+  "entity.shahed.drone": "Дрон SHAHED.exe",
+  "itemGroup.shahed.equipment": "SHAHED.exe — FPV Mayhem",
+  "commands.shahed.kit": "Оборудование выдано: пульт, FPV-очки и дрон.",
+  "commands.shahed.spawned": "Дрон создан. Управление полётом запланировано на следующие этапы.",
+  "commands.shahed.creative_only": "Эта команда доступна только в творческом режиме.",
+  "item.shahed.stage_one": "Прототип этапа 1: только оборудование и модель.",
+  "message.shahed.future.manufacturer": "ТОВ «КРИВІ РУКИ AEROSPACE»: собрано с оптимизмом.",
+  "message.shahed.future.signal_lost": "Сигнал потерян. Антенна ушла на обед.",
+  "message.shahed.future.training": "Тренировочный режим: учимся летать, посадка за посадкой.",
+  "message.shahed.future.black_box": "Чёрный ящик сохранён. Он помнит твои лучшие ошибки.",
+  "message.shahed.future.director": "Режим режиссёра: всё готово к очень драматичному дублю.",
+  "commands.shahed.spawn_blocked": "Недостаточно свободного места для дрона. Выберите открытое место."
+}

@@ -1,0 +1,65 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        shahed {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+// Runs a real headless Minecraft server during `check` (and therefore `build`).
+// Client rendering still needs the separate manual test plan.
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = 'shahed_tests'
+        enableGameTests = true
+        enableClientGameTests = false
+    }
+}
+
+def gameTestReport = layout.buildDirectory.file('gametest-results.xml')
+loom.runConfigs.named('gameTest') {
+    systemProperties.put('fabric-api.gametest.report-file', gameTestReport.map { it.asFile.absolutePath })
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+    def modVersion = project.version.toString()
+    inputs.property 'version', modVersion
+    filesMatching('fabric.mod.json') {
+        expand 'version': modVersion
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+    options.encoding = 'UTF-8'
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
+jar {
+    def archiveName = project.archives_base_name
+    from('LICENSE') { rename { "${it}_${archiveName}" } }
+}

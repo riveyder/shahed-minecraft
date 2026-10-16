@@ -1,0 +1,17 @@
+{
+  "item.shahed.controller": "Radio Controller",
+  "item.shahed.fpv_goggles": "FPV Goggles",
+  "item.shahed.drone": "SHAHED.exe Drone",
+  "entity.shahed.drone": "SHAHED.exe Drone",
+  "itemGroup.shahed.equipment": "SHAHED.exe — FPV Mayhem",
+  "commands.shahed.kit": "Equipment issued: controller, FPV goggles, and drone.",
+  "commands.shahed.spawned": "Drone deployed. Flight controls are planned for a later stage.",
+  "commands.shahed.creative_only": "This command requires Creative mode.",
+  "item.shahed.stage_one": "Stage 1 prototype: equipment and model only.",
+  "message.shahed.future.manufacturer": "ТОВ «КРИВІ РУКИ AEROSPACE»: assembled with optimism.",
+  "message.shahed.future.signal_lost": "Signal lost. The antenna has started its lunch break.",
+  "message.shahed.future.training": "Training mode: learning to fly, one landing at a time.",
+  "message.shahed.future.black_box": "Black box saved. It remembers your finest mistakes.",
+  "message.shahed.future.director": "Director mode: ready for a very dramatic take.",
+  "commands.shahed.spawn_blocked": "Not enough free space for the drone. Choose an open area."
+}

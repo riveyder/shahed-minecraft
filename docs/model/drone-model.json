@@ -1,0 +1,36 @@
+{
+  "format": "shahed-prototype-geometry-v1",
+  "description": "Editable geometry reference for the Java entity model; not a Minecraft runtime model loader format.",
+  "texture": "shahed:textures/entity/drone.png",
+  "texture_size": [128, 128],
+  "units": "model pixels (16 = 1 block)",
+  "coordinates": {"nose": "-Z", "rear": "+Z", "up": "-Y", "right": "+X"},
+  "renderer": {"yaw_rotation_degrees": "180 - entityYaw", "entity_yaw_zero_world_direction": "+Z"},
+  "root_offset": [0, 16, 0],
+  "parts": [
+    {"name": "fuselage", "origin": [-2, -2, -8], "size": [4, 4, 17], "uv": [0, 0]},
+    {"name": "nose", "origin": [-1.5, -1.5, -12], "size": [3, 3, 4], "uv": [44, 0]},
+    {"name": "nose_tip", "origin": [-1, -1, -15], "size": [2, 2, 3], "uv": [60, 0]},
+    {"name": "left_wing_root", "origin": [-7, -0.5, -3], "size": [5, 1, 10], "uv": [0, 24]},
+    {"name": "left_wing_mid", "origin": [-11, -0.5, 1], "size": [4, 1, 8], "uv": [32, 24]},
+    {"name": "left_wing_tip", "origin": [-15, -0.5, 5], "size": [4, 1, 4], "uv": [58, 24]},
+    {"name": "right_wing_root", "origin": [2, -0.5, -3], "size": [5, 1, 10], "uv": [0, 24]},
+    {"name": "right_wing_mid", "origin": [7, -0.5, 1], "size": [4, 1, 8], "uv": [32, 24]},
+    {"name": "right_wing_tip", "origin": [11, -0.5, 5], "size": [4, 1, 4], "uv": [58, 24]},
+    {"name": "tail_fin", "origin": [-0.5, -6, 5], "size": [1, 5, 4], "uv": [76, 24]},
+    {"name": "engine", "origin": [-1.5, -1.5, 9], "size": [3, 3, 4], "uv": [0, 38]},
+    {"name": "propeller_hub", "origin": [-1, -1, 13], "size": [2, 2, 2], "uv": [16, 38]},
+    {"name": "propeller_horizontal", "origin": [-7, -0.5, 14.5], "size": [14, 1, 1], "uv": [0, 48]},
+    {"name": "propeller_vertical", "origin": [-0.5, -7, 14.5], "size": [1, 14, 1], "uv": [32, 48]},
+    {"name": "left_skid", "origin": [-3, 2, -2], "size": [1, 6, 8], "uv": [44, 38]},
+    {"name": "right_skid", "origin": [2, 2, -2], "size": [1, 6, 8], "uv": [44, 38]},
+    {"name": "antenna", "origin": [-0.5, -6, 0], "size": [1, 4, 1], "uv": [66, 38]}
+  ],
+  "stage": 1,
+  "animations": [],
+  "notes": [
+    "A stylized fictional delta-wing drone with stepped wing panels, pusher engine, four visible propeller arms, landing skids and antenna.",
+    "Wing panels intentionally use simple Minecraft cuboids. Mesh refinement and flight animation belong to later stages.",
+    "Grey and white surfaces, orange tips, teal status light and original KRA pixel maker marks."
+  ]
+}
