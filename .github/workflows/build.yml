@@ -21,6 +21,8 @@ jobs:
           java-version: '25'
       - name: Set up Gradle and validate wrapper
         uses: gradle/actions/setup-gradle@v4
+      - name: Validate editable model and resource references
+        run: python3 docs/model/test_overhaul.py
       - name: Build
         run: ./gradlew build --no-daemon
       - name: Upload mod and sources

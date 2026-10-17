@@ -1,3 +1,21 @@
+# Дополнения версии 0.3.0
+
+- `assets-work/Shahed_Sheep.bbmodel` — неизменённый пользовательский источник.
+- `assets-work/Shahed_Sheep_Overhaul.bbmodel` — масштаб 2,5×, 63 кубоида и встроенный атлас.
+- `docs/model/overhaul.py`, `preview_overhaul.py`, `test_overhaul.py` — экспорт, предпросмотр и регрессии ресурсов.
+- `docs/model/generate_audio.py` — воспроизводимые оригинальные звуки; OGG в `assets/shahed/sounds`.
+- `control/DroneConfig`, `DroneRacing`, `RaceRun` — серверные настройки и гонки.
+- `replay/` и `network/Replay*` — ограниченная запись, сетевой перенос, права просмотра и загрузка чанков.
+- `client/DroneAudio`, `ReplayController`, `SignalLostScreen`, `FpvExtrasScreen` — клиентские подсистемы.
+- `client/mixin/NightVisionMixin` — локальное ночное видение без эффектов зелья на сервере.
+- `src/gametest/.../{Destruction,Replay,Extras}GameTests` — новые серверные регрессии.
+- `src/clientSmoke/.../ClientSmokeTest` — опциональный графический интеграционный тест.
+- `docs/AUTONOMOUS_PLAN.md`, `docs/verification/` — фактический протокол и визуальные свидетельства.
+
+Ниже сохранён исторический перечень предыдущей версии.
+
+---
+
 # Файлы проекта
 
 Репозиторий содержит основу этапа 1, реализацию этапа 2 и доработку 0.2.1. Сгенерированные `build/`, `.gradle/`, игровые миры и настройки облачной машины не входят в Git.
