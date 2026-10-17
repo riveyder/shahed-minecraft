@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -15,6 +16,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.InterpolationHandler;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -26,6 +28,8 @@ import net.minecraft.world.phys.Vec3;
 /** Server-authoritative arcade aircraft. Its regular entity UUID is its persistent identity. */
 public final class DroneEntity extends Entity {
     public static final double MAX_SPEED = 0.8; // blocks/tick = 16 metres/second at 20 TPS
+    private static final double CRASH_SPEED = 0.35; // normal contact speed, 7 m/s at 20 TPS
+    private static final double COLLISION_EPSILON = 0.00001;
     private static final EntityDataAccessor<Float> ROLL = SynchedEntityData.defineId(
             DroneEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Boolean> FLYING = SynchedEntityData.defineId(
@@ -214,11 +218,20 @@ public final class DroneEntity extends Entity {
         setDeltaMovement(velocity);
         move(MoverType.SELF, velocity);
         Vec3 actual = position().subtract(before);
-        setDeltaMovement(new Vec3(
-                Math.abs(actual.x - velocity.x) > 0.00001 ? 0 : velocity.x,
-                Math.abs(actual.y - velocity.y) > 0.00001 ? 0 : velocity.y,
-                Math.abs(actual.z - velocity.z) > 0.00001 ? 0 : velocity.z));
-        double impact = velocity.subtract(actual).length();
+        // Movement clipping identifies contact axes, NOT impact speed. The untravelled
+        // distance depends on where within this tick the surface was hit and can be tiny
+        // even at full speed. Use the pre-contact velocity on those axes instead.
+        Vec3 impactVelocity = new Vec3(
+                Math.abs(actual.x - velocity.x) > COLLISION_EPSILON ? velocity.x : 0,
+                Math.abs(actual.y - velocity.y) > COLLISION_EPSILON ? velocity.y : 0,
+                Math.abs(actual.z - velocity.z) > COLLISION_EPSILON ? velocity.z : 0);
+        setDeltaMovement(velocity.subtract(impactVelocity));
+        double impact = impactVelocity.length();
+        // A fatal collision must not depend on accumulated chip damage or its cooldown.
+        if (!isTraining() && impact >= CRASH_SPEED) {
+            destroy(collisionPosition(impactVelocity));
+            return;
+        }
         if (impact > 0.18 && impactCooldown == 0) {
             impactCooldown = 8;
             serverLevel.playSound(null,getX(),getY(),getZ(),
@@ -226,6 +239,45 @@ public final class DroneEntity extends Entity {
             if(!isTraining()) hurtServer(serverLevel,damageSources().flyIntoWall(),(float)((impact-0.18)*26));
         }
         needsSync = true;
+    }
+
+    /** Vanilla sweeps these entity boxes together with block voxel shapes in move(). */
+    @Override
+    public boolean canCollideWith(Entity other) {
+        return other.isAlive() && !other.isSpectator() && !other.noPhysics
+                && !isPassengerOfSameVehicle(other)
+                && (other instanceof LivingEntity || other instanceof DroneEntity || super.canCollideWith(other));
+    }
+
+    /** Place effects on the contacted surface, not several blocks behind the wide nose/wing. */
+    private Vec3 collisionPosition(Vec3 impactVelocity) {
+        AABB bounds = getBoundingBox();
+        Vec3 center = bounds.getCenter();
+        Direction.Axis axis = Math.abs(impactVelocity.x) > Math.abs(impactVelocity.y)
+                ? Direction.Axis.X : Direction.Axis.Y;
+        if (Math.abs(impactVelocity.z) > Math.abs(impactVelocity.get(axis))) axis = Direction.Axis.Z;
+        double sign = Math.signum(impactVelocity.get(axis));
+        double face = sign > 0 ? bounds.max(axis) : bounds.min(axis);
+        Vec3 contact = center;
+        double nearest = Double.MAX_VALUE;
+        for (var shape : Entity.collectAllColliders(this, level(), bounds.inflate(COLLISION_EPSILON))) {
+            for (AABB obstacle : shape.toAabbs()) {
+                double surface = sign > 0 ? obstacle.min(axis) : obstacle.max(axis);
+                if (Math.abs(surface - face) > COLLISION_EPSILON * 2) continue;
+                Vec3 point = new Vec3(Mth.clamp(center.x, obstacle.minX, obstacle.maxX),
+                        Mth.clamp(center.y, obstacle.minY, obstacle.maxY),
+                        Mth.clamp(center.z, obstacle.minZ, obstacle.maxZ));
+                double distance = point.distanceToSqr(center);
+                if (distance < nearest) { nearest = distance; contact = point; }
+            }
+        }
+        // Keep the particle/sound origin just outside the solid surface.
+        double coordinate = face - sign * 0.01;
+        return switch (axis) {
+            case X -> new Vec3(coordinate, contact.y, contact.z);
+            case Y -> new Vec3(contact.x, coordinate, contact.z);
+            case Z -> new Vec3(contact.x, contact.y, coordinate);
+        };
     }
 
     private static boolean areChunksLoaded(ServerLevel level, AABB bounds) {
@@ -351,6 +403,10 @@ public final class DroneEntity extends Entity {
 
     /** Mark before effects: chained explosion damage cannot re-enter this transaction. */
     public boolean destroy() {
+        return destroy(position().add(0, 0.4, 0));
+    }
+
+    private boolean destroy(Vec3 explosionPosition) {
         if (!(level() instanceof ServerLevel server) || destroyed || isRemoved()) return false;
         destroyed=true;
         recordFrame();
@@ -358,13 +414,14 @@ public final class DroneEntity extends Entity {
         stopControl();
         if(isTraining()) { discard();return true; }
         var policy=io.github.riveyder.shahed.control.DroneConfig.get();
-        server.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,
-                getX(),getY()+0.5,getZ(),1,0,0,0,0);
+        // A full visible burst is independent of vanilla's block-interaction particle choice.
+        server.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,
+                explosionPosition.x,explosionPosition.y,explosionPosition.z,1,0,0,0,0);
         server.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE,
-                getX(),getY()+0.5,getZ(),20,0.7,0.4,0.7,0.06);
-        server.playSound(null,getX(),getY(),getZ(),io.github.riveyder.shahed.registry.ModSounds.BLAST,
+                explosionPosition.x,explosionPosition.y,explosionPosition.z,20,0.7,0.4,0.7,0.06);
+        server.playSound(null,explosionPosition.x,explosionPosition.y,explosionPosition.z,io.github.riveyder.shahed.registry.ModSounds.BLAST,
                 net.minecraft.sounds.SoundSource.NEUTRAL,1.5F,1);
-        server.explode(this,getX(),getY()+0.4,getZ(),policy.explosionPower(),false,
+        server.explode(this,explosionPosition.x,explosionPosition.y,explosionPosition.z,policy.explosionPower(),false,
                 policy.destroyBlocks()?Level.ExplosionInteraction.TNT:Level.ExplosionInteraction.NONE);
         discard();
         return true;

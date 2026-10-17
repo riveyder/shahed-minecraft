@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "name": "SHAHED.exe Integration Tests",
   "environment": "*",
+  "mixins": ["shahed.tests.mixins.json"],
   "entrypoints": {
     "fabric-gametest": [
       "io.github.riveyder.shahed.test.StageOneGameTests",
