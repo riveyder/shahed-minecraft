@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the original SHAHED.exe prototype pixel art (requires Pillow).
+"""Regenerate original SHAHED.exe textures/icons from the geometry source (requires Pillow).
 
 This is a development helper, not part of the Gradle or runtime dependency set.
 Run from any directory: python3 docs/model/generate_assets.py
@@ -68,50 +68,34 @@ def box_uv(draw, uv, size, colors):
 
 
 def entity_texture():
-    image = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+    """Draw the atlas directly from the same dimensions and UV used by DroneModel."""
+    geometry = json.loads((ROOT / "docs/model/drone-model.json").read_text())
+    image = Image.new("RGBA", tuple(geometry["texture_size"]), INK)
     draw = ImageDraw.Draw(image)
-    surfaces = [
-        ((0, 0), (4, 4, 17), (WHITE, GRAY, LIGHT)),
-        ((44, 0), (3, 3, 4), (WHITE, GRAY, LIGHT)),
-        ((60, 0), (2, 2, 3), (DARK, INK, GRAY)),
-        ((0, 24), (5, 1, 10), (WHITE, GRAY, LIGHT)),
-        ((32, 24), (4, 1, 8), (WHITE, GRAY, LIGHT)),
-        ((58, 24), (4, 1, 4), (WHITE, GRAY, LIGHT)),
-        ((76, 24), (1, 5, 4), (WHITE, GRAY, LIGHT)),
-        ((0, 38), (3, 3, 4), (DARK, INK, GRAY)),
-        ((16, 38), (2, 2, 2), (GRAY, INK, DARK)),
-        ((0, 48), (14, 1, 1), (DARK, INK, GRAY)),
-        ((32, 48), (1, 14, 1), (DARK, INK, GRAY)),
-        ((44, 38), (1, 6, 8), (GRAY, INK, DARK)),
-        ((66, 38), (1, 4, 1), (DARK, INK, GRAY)),
-    ]
-    for uv, size, colors in surfaces:
-        box_uv(draw, uv, size, colors)
-    # Top fuselage service panels, orientation marks, and status indicator.
-    draw.rectangle((22, 3, 23, 7), fill=LIGHT)
-    draw.rectangle((22, 10, 23, 13), fill=DARK)
-    draw.point((22, 11), fill=TEAL)
-    draw.line((21, 16, 24, 16), fill=ORANGE)
-    # Tiny original maker mark on both long fuselage sides: K R A (3x3).
+    painted = set()
+    for part in geometry["parts"]:
+        key = tuple(part["uv"])
+        if key in painted:
+            continue
+        painted.add(key)
+        colors = geometry["materials"][part["material"]]
+        box_uv(draw, part["uv"], part["size"], colors)
+        u, v = part["uv"]
+        x, y, z = part["size"]
+        # Restrained seams inside large visible upper surfaces, never transparent faces.
+        if x >= 4 and z >= 8:
+            left = u + z + x
+            draw.rectangle((left, v + 2, left + x - 1, v + 2), fill=LIGHT)
+            draw.line((left, v + z - 3, left + x - 1, v + z - 3), fill=GRAY)
+    # Original KRA mark on the broad fuselage side.
+    part = next(part for part in geometry["parts"] if part["name"] == "fuselage_core")
+    u, v = part["uv"]
+    z = part["size"][2]
     tiny = ["101110010", "110110111", "101101101"]
-    for origin in (3, 24):
-        for y, row in enumerate(tiny):
-            for x, bit in enumerate(row):
-                if bit == "1":
-                    draw.point((origin + x, 17 + y), fill=DARK)
-    # Wing top surface panel seams and identification tips.
-    draw.line((15, 29, 19, 29), fill=LIGHT)
-    draw.line((15, 32, 19, 32), fill=LIGHT)
-    draw.line((44, 29, 47, 29), fill=LIGHT)
-    draw.rectangle((66, 24, 69, 24), fill=ORANGE)
-    draw.line((81, 24, 81, 27), fill=ORANGE)
-    # Engine vents, propeller tips, and antenna end.
-    for x in (1, 3, 8, 10):
-        draw.line((x, 42, x, 44), fill=INK)
-    draw.rectangle((1, 48, 2, 49), fill=ORANGE)
-    draw.rectangle((13, 48, 14, 49), fill=ORANGE)
-    draw.rectangle((32, 49, 35, 50), fill=ORANGE)
-    draw.rectangle((32, 61, 35, 62), fill=ORANGE)
+    for row, bits in enumerate(tiny):
+        for col, bit in enumerate(bits):
+            if bit == "1":
+                draw.point((u + 2 + col, v + z + 1 + row), fill=DARK)
     save(image, "textures/entity/drone.png")
 
 
@@ -193,9 +177,11 @@ def item_definitions():
         (ASSETS / "items" / f"{name}.json").write_text(
             json.dumps({"model": {"type": "minecraft:model", "model": f"shahed:item/{name}"}}, indent=2) + "\n",
             encoding="utf-8")
-        (ASSETS / "models/item" / f"{name}.json").write_text(
-            json.dumps({"parent": "minecraft:item/generated", "textures": {"layer0": f"shahed:item/{name}"}}, indent=2) + "\n",
-            encoding="utf-8")
+        # Controller/goggles are authored cuboid models; preserve their geometry/transforms.
+        if name == "drone":
+            (ASSETS / "models/item" / f"{name}.json").write_text(
+                json.dumps({"parent": "minecraft:item/generated", "textures": {"layer0": f"shahed:item/{name}"}}, indent=2) + "\n",
+                encoding="utf-8")
 
 
 if __name__ == "__main__":

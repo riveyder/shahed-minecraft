@@ -2,11 +2,14 @@
   "schemaVersion": 1,
   "id": "shahed_tests",
   "version": "1.0.0",
-  "name": "SHAHED.exe Stage One Integration Tests",
+  "name": "SHAHED.exe Integration Tests",
   "environment": "*",
   "entrypoints": {
     "fabric-gametest": [
-      "io.github.riveyder.shahed.test.StageOneGameTests"
+      "io.github.riveyder.shahed.test.StageOneGameTests",
+      "io.github.riveyder.shahed.test.StageTwoGameTests",
+      "io.github.riveyder.shahed.test.PolishFlightGameTests",
+      "io.github.riveyder.shahed.test.RemoteFpvGameTests"
     ]
   },
   "depends": {

@@ -17,9 +17,10 @@ public final class ModEntities {
             BuiltInRegistries.ENTITY_TYPE,
             DRONE_KEY,
             EntityType.Builder.<DroneEntity>of(DroneEntity::new, MobCategory.MISC)
-                    .sized(2.0F, 1.0F)
-                    .clientTrackingRange(8)
-                    .updateInterval(3)
+                    .sized(3.9F, 1.3F)
+                    .eyeHeight(0.55F)
+                    .clientTrackingRange(10)
+                    .updateInterval(1)
                     .build(DRONE_KEY)
     );
 

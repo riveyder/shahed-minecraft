@@ -13,5 +13,6 @@ public final class ShahedClient implements ClientModInitializer {
     public void onInitializeClient() {
         ModelLayerRegistry.registerModelLayer(DroneModel.LAYER, DroneModel::createBodyLayer);
         EntityRenderers.register(ModEntities.DRONE, DroneRenderer::new);
+        FpvController.initialize();
     }
 }
