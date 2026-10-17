@@ -12,6 +12,34 @@ import net.minecraft.world.phys.Vec3;
 /** Acceptance regressions for physical coasting, drag, angular inertia and unpowered descent. */
 public final class PolishFlightGameTests {
     @GameTest
+    public void disconnectCutsThrustWithoutSnappingAndSettlesNoseDown(GameTestHelper helper) {
+        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 40, 3);
+        try {
+            for (int i=0;i<8;i++) {
+                drone.setControlInput(new DroneInput(1,0,0,0,0,false));
+                drone.tick();
+            }
+            helper.assertTrue(drone.getThrottle()>0.1F, "Fixture must be powered");
+            Vec3 momentum=drone.getDeltaMovement();
+            float attitude=drone.getXRot();
+            drone.stopControl();
+            helper.assertTrue(drone.getThrottle()==0, "Disconnect must cut engine thrust immediately");
+            helper.assertTrue(drone.getDeltaMovement().equals(momentum), "Disarm must retain momentum");
+            helper.assertTrue(drone.getXRot()==attitude, "Disarm must retain attitude");
+            drone.tick();
+            helper.assertTrue(drone.getXRot()>attitude && drone.getXRot()-attitude<0.3F,
+                    "The nose must lower gradually through angular acceleration");
+            helper.assertTrue(drone.getDeltaMovement().z>momentum.z*0.9,
+                    "The first powerless tick must preserve most forward momentum");
+            double altitude=drone.getY();
+            for(int i=0;i<10;i++) drone.tick();
+            helper.assertTrue(drone.getY()<altitude && drone.getXRot()>attitude,
+                    "The unpiloted aircraft must descend nose-down");
+            helper.succeed();
+        } finally { drone.discard(); }
+    }
+
+    @GameTest
     public void releasingPoweredForwardFlightPreservesMotionAndDirection(GameTestHelper helper) {
         DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 40, 3);
         try {

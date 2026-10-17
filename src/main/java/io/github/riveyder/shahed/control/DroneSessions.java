@@ -68,7 +68,35 @@ public final class DroneSessions {
     }
 
     public static boolean isControlling(ServerPlayer player) {
-        return PLAYERS.containsKey(player.getUUID());
+        return hasFlightSession(player) || io.github.riveyder.shahed.replay.DroneReplays.isViewing(player);
+    }
+
+    public static boolean hasFlightSession(ServerPlayer player) { return PLAYERS.containsKey(player.getUUID()); }
+
+    public static void destroyed(DroneEntity drone) {
+        for(Session session:new ArrayList<>(PLAYERS.values())) {
+            if(session.drone==drone) {
+                io.github.riveyder.shahed.replay.DroneReplays.capture(session.player,session.id,drone);
+                end(session.player,"destroyed");
+            }
+        }
+    }
+
+    /** Owner opt-in grants a camera, never input authority or ownership. */
+    public static boolean spectate(ServerPlayer player,DroneEntity drone) {
+        if(!drone.spectatorsAllowed()||drone.isRemoved()||drone.level()!=player.level()
+                ||isControlling(player)||!player.isAlive()||player.isSpectator()||player.isPassenger()||player.isSleeping()
+                ||!player.getItemBySlot(EquipmentSlot.HEAD).is(ModItems.FPV_GOGGLES)) return false;
+        if(player.connection!=null && (!ServerPlayNetworking.canSend(player,SessionPayload.TYPE)
+                || !ServerPlayNetworking.canSend(player,TelemetryPayload.TYPE))) return false;
+        Session session=new Session(player,drone,true);
+        PLAYERS.put(player.getUUID(),session);
+        player.setDeltaMovement(Vec3.ZERO);
+        if(player.connection!=null) { player.connection.resetFlyingTicks();session.chunks.update(player,drone.chunkPosition()); }
+        refreshTracking(player);
+        send(player,new SessionPayload(true,session.id,drone.getUUID(),drone.getId(),"spectator"));
+        telemetry(session);
+        return true;
     }
 
     public static Optional<UUID> sessionId(ServerPlayer player) {
@@ -84,16 +112,15 @@ public final class DroneSessions {
     /** The viewing origin is separate from the physical body and its vanilla loading tickets. */
     public static Vec3 trackingPosition(ServerPlayer player) {
         Session session = PLAYERS.get(player.getUUID());
-        return session == null ? player.position() : session.drone.position();
+        return session == null ? io.github.riveyder.shahed.replay.DroneReplays.position(player) : session.drone.position();
     }
 
     public static ChunkPos trackingChunk(ServerPlayer player) {
-        Session session = PLAYERS.get(player.getUUID());
-        return session == null ? player.chunkPosition() : session.drone.chunkPosition();
+        return ChunkPos.containing(net.minecraft.core.BlockPos.containing(trackingPosition(player)));
     }
 
     public static boolean connect(ServerPlayer player, DroneEntity drone, ItemStack stack) {
-        // 0.2.1 removes fields from telemetry/session packets. Reject older clients before
+        // The v3 session protocol distinguishes read-only spectators. Reject older clients before
         // immobilizing the body; a missing protocol must never create an invisible live session.
         if (player.connection != null && (!ServerPlayNetworking.canSend(player, SessionPayload.TYPE)
                 || !ServerPlayNetworking.canSend(player, TelemetryPayload.TYPE))) {
@@ -120,7 +147,7 @@ public final class DroneSessions {
         if (DRONES.containsKey(drone.getUUID())) {
             return reject(player, "occupied");
         }
-        Session session = new Session(player, drone);
+        Session session = new Session(player, drone,false);
         PLAYERS.put(player.getUUID(), session);
         DRONES.put(drone.getUUID(), player.getUUID());
         player.setDeltaMovement(Vec3.ZERO);
@@ -139,7 +166,7 @@ public final class DroneSessions {
     /** Accept latest state, never advance flight here. Replay/foreign-session and non-finite input is rejected. */
     public static boolean accept(ServerPlayer player, InputPayload payload) {
         Session session = PLAYERS.get(player.getUUID());
-        if (session == null || !session.id.equals(payload.sessionId())
+        if (session == null || session.spectator || !session.id.equals(payload.sessionId())
                 || !session.drone.getUUID().equals(payload.droneUuid())
                 || payload.sequence() < 0 || payload.sequence() <= session.sequence
                 || !payload.input().isFinite() || session.packetsThisTick >= 16) {
@@ -169,8 +196,10 @@ public final class DroneSessions {
         if (session == null) {
             return;
         }
-        DRONES.remove(session.drone.getUUID(), player.getUUID());
-        session.drone.stopControl();
+        if(!session.spectator) {
+            DRONES.remove(session.drone.getUUID(), player.getUUID());
+            session.drone.stopControl();
+        }
         session.chunks.close();
         if (!reason.equals("disconnect") && !reason.equals("server_stopping")) refreshTracking(player);
         player.setDeltaMovement(Vec3.ZERO);
@@ -208,7 +237,7 @@ public final class DroneSessions {
                 session.player.connection.resetFlyingTicks();
             }
             // A lost input packet cannot hold thrust forever, or end the viewing session.
-            session.drone.setControlInput(session.ticksSinceInput >= INPUT_IDLE_TICKS
+            if(!session.spectator) session.drone.setControlInput(session.ticksSinceInput >= INPUT_IDLE_TICKS
                     ? DroneInput.IDLE : session.pending);
             if (session.player.connection != null) {
                 session.chunks.update(session.player, session.drone.chunkPosition());
@@ -240,11 +269,13 @@ public final class DroneSessions {
             return "body_moved";
         }
         if (!player.getItemBySlot(EquipmentSlot.HEAD).is(ModItems.FPV_GOGGLES)
-                || !heldBinding(player, drone.getUUID())) {
+                || (!session.spectator && !heldBinding(player, drone.getUUID()))) {
             return "equipment";
         }
+        if(session.spectator && !drone.spectatorsAllowed()) return "spectator_revoked";
+        if (drone.isDestroyed()) return "destroyed";
         if (drone.isRemoved() || !drone.isAlive() || drone.level() != session.level
-                || !drone.getOwnerUuid().filter(player.getUUID()::equals).isPresent()) {
+                || (!session.spectator && !drone.getOwnerUuid().filter(player.getUUID()::equals).isPresent())) {
             return "drone_unavailable";
         }
         return null;
@@ -292,6 +323,7 @@ public final class DroneSessions {
 
     private static final class Session {
         private final UUID id = UUID.randomUUID();
+        private final boolean spectator;
         private final ServerPlayer player;
         private final DroneEntity drone;
         private final ServerLevel level;
@@ -305,7 +337,8 @@ public final class DroneSessions {
         private int telemetryTicks;
         private int previousHurtTime;
 
-        private Session(ServerPlayer player, DroneEntity drone) {
+        private Session(ServerPlayer player, DroneEntity drone,boolean spectator) {
+            this.spectator=spectator;
             this.player = player;
             this.drone = drone;
             this.level = player.level();

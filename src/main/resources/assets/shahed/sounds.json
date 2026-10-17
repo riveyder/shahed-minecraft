@@ -1,0 +1,50 @@
+{
+  "engine": {
+    "sounds": [
+      {
+        "name": "shahed:engine",
+        "attenuation_distance": 48
+      }
+    ]
+  },
+  "startup": {
+    "sounds": [
+      {
+        "name": "shahed:startup",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "shutdown": {
+    "sounds": [
+      {
+        "name": "shahed:shutdown",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "wind": {
+    "sounds": [
+      {
+        "name": "shahed:wind",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "impact": {
+    "sounds": [
+      {
+        "name": "shahed:impact",
+        "attenuation_distance": 24
+      }
+    ]
+  },
+  "blast": {
+    "sounds": [
+      {
+        "name": "shahed:blast",
+        "attenuation_distance": 24
+      }
+    ]
+  }
+}

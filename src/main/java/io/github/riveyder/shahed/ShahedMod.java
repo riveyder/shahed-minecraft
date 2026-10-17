@@ -17,12 +17,16 @@ public final class ShahedMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        io.github.riveyder.shahed.control.DroneConfig.load();
         ModEntities.initialize();
+        io.github.riveyder.shahed.registry.ModSounds.initialize();
         ModItems.initialize();
         DroneNetworking.register();
         DroneSessions.register();
+        io.github.riveyder.shahed.replay.DroneReplays.register();
         ControllerItem.registerInteractions();
         DroneCommands.register();
+        io.github.riveyder.shahed.control.DroneRacing.register();
         LOGGER.info("SHAHED.exe initialized: server-authoritative FPV flight and equipment.");
     }
 

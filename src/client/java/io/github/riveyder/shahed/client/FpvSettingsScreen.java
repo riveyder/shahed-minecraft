@@ -23,7 +23,7 @@ public final class FpvSettingsScreen extends Screen {
     @Override
     protected void init() {
         int x = width / 2 - 120;
-        int y = Math.max(36, height / 2 - 86);
+        int y = Math.max(28, height / 2 - 112);
         addRenderableWidget(new SettingSlider(x, y, "settings.shahed.sensitivity",
                 settings.sensitivity, 0.1, 3.0, value -> settings.sensitivity = value));
         addRenderableWidget(new SettingSlider(x, y + 28, "settings.shahed.smoothing",
@@ -35,17 +35,21 @@ public final class FpvSettingsScreen extends Screen {
         }).bounds(x, y + 56, 240, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("controls.keybinds"),
                 button -> minecraft.gui.setScreen(new KeyBindsScreen(this, minecraft.options)))
-                .bounds(x, y + 84, 240, 20).build());
+                .bounds(x, y + 132, 117, 20).build());
+        addRenderableWidget(new SettingSlider(x,y+80,"settings.shahed.engine_volume",settings.engineVolume,0,1,value->settings.engineVolume=value));
+        addRenderableWidget(new SettingSlider(x,y+104,"settings.shahed.wind_volume",settings.windVolume,0,1,value->settings.windVolume=value));
+        addRenderableWidget(Button.builder(Component.literal("Дополнительно"),button->minecraft.gui.setScreen(new FpvExtrasScreen(this,settings)))
+                .bounds(x+123,y+132,117,20).build());
         if (FpvController.isActive()) {
             addRenderableWidget(Button.builder(Component.translatable("key.shahed.exit"), button -> {
                 FpvController.exit(true);
                 onClose();
-            }).bounds(x, y + 112, 117, 20).build());
+            }).bounds(x, y + 156, 117, 20).build());
             addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> onClose())
-                    .bounds(x + 123, y + 112, 117, 20).build());
+                    .bounds(x + 123, y + 156, 117, 20).build());
         } else {
             addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> onClose())
-                    .bounds(x, y + 112, 240, 20).build());
+                    .bounds(x, y + 156, 240, 20).build());
         }
     }
 

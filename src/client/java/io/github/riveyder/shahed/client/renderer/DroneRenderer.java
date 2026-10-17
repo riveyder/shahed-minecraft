@@ -39,6 +39,7 @@ public final class DroneRenderer extends EntityRenderer<DroneEntity, DroneRender
     @Override
     public void extractRenderState(DroneEntity entity, DroneRenderState state, float tickProgress) {
         super.extractRenderState(entity, state, tickProgress);
+        state.tint=entity.getTint();
         state.yaw = entity.getYRot(tickProgress);
         state.pitch = entity.getXRot(tickProgress);
         state.roll = entity.getRoll(tickProgress);
@@ -56,7 +57,7 @@ public final class DroneRenderer extends EntityRenderer<DroneEntity, DroneRender
         poses.translate(0.0F, -1.5F, 0.0F);
         collector.order(0).submitModel(model, state, poses,
                 RenderTypes.entityCutout(TEXTURE), state.lightCoords,
-                OverlayTexture.NO_OVERLAY, -1, null, state.outlineColor, null);
+                OverlayTexture.NO_OVERLAY, state.tint, null, state.outlineColor, null);
         poses.popPose();
         super.submit(state, poses, collector, camera);
     }

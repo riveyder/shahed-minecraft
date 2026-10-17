@@ -21,6 +21,7 @@ import net.minecraft.world.item.equipment.Equippable;
 
 public final class ModItems {
     public static final Item DRONE = register("drone", DroneItem::new, equipmentProperties("drone"));
+    public static final Item TRAINING_DRONE = register("training_drone", properties -> new DroneItem(properties,true), equipmentProperties("training_drone"));
     public static final Item CONTROLLER = register("controller", ControllerItem::new, equipmentProperties("controller"));
     public static final Item FPV_GOGGLES = register("fpv_goggles", Item::new,
             equipmentProperties("fpv_goggles").component(DataComponents.EQUIPPABLE,
@@ -34,6 +35,7 @@ public final class ModItems {
             .icon(() -> new ItemStack(DRONE))
             .displayItems((parameters, output) -> {
                 output.accept(DRONE);
+                output.accept(TRAINING_DRONE);
                 output.accept(CONTROLLER);
                 output.accept(FPV_GOGGLES);
             })

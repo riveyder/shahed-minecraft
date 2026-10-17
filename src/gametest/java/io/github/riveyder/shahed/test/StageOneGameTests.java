@@ -123,7 +123,7 @@ public final class StageOneGameTests {
     @GameTest
     public void droneSaveLoadPreservesOwnershipAndOrientation(GameTestHelper helper) {
         UUID ownerUuid = UUID.fromString("88f9de5d-ea85-4dc0-b09e-26d660d59df4");
-        DroneEntity original = helper.spawn(ModEntities.DRONE, 2, 2, 2);
+        DroneEntity original = helper.spawn(ModEntities.DRONE, 3, 40, 3);
         original.setOwnerUuid(ownerUuid);
         original.setYRot(90.0F);
 

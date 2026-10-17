@@ -16,6 +16,11 @@ public final class FpvSettings {
     public double sensitivity = 1.0;
     public double smoothingSeconds = 0.12;
     public boolean invertPitch;
+    public boolean nightVision;
+    public boolean directorCamera;
+    public boolean humor=true;
+    public double engineVolume = 0.7;
+    public double windVolume = 0.35;
 
     public static FpvSettings load() {
         if (Files.isRegularFile(FILE)) {
@@ -45,6 +50,8 @@ public final class FpvSettings {
     }
 
     private void sanitize() {
+        engineVolume = Double.isFinite(engineVolume) ? Math.clamp(engineVolume,0,1) : 0.7;
+        windVolume = Double.isFinite(windVolume) ? Math.clamp(windVolume,0,1) : 0.35;
         sensitivity = Double.isFinite(sensitivity) ? Math.clamp(sensitivity, 0.1, 3.0) : 1.0;
         smoothingSeconds = Double.isFinite(smoothingSeconds) ? Math.clamp(smoothingSeconds, 0.0, 0.5) : 0.12;
     }

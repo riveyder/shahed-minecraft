@@ -30,6 +30,7 @@ public final class DroneEntity extends Entity {
             DroneEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Boolean> FLYING = SynchedEntityData.defineId(
             DroneEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Float> THROTTLE = SynchedEntityData.defineId(DroneEntity.class, EntityDataSerializers.FLOAT);
     private final InterpolationHandler interpolation = new InterpolationHandler(this, 3);
     private UUID ownerUuid;
     private DroneInput control = DroneInput.IDLE;
@@ -41,6 +42,29 @@ public final class DroneEntity extends Entity {
     private float throttle;
     private float previousRoll;
     private float health = 10.0F;
+    private boolean destroyed;
+    private boolean spectatorsAllowed;
+    public boolean spectatorsAllowed() { return spectatorsAllowed; }
+    public void allowSpectators(boolean allowed) { spectatorsAllowed=allowed; }
+    private static final EntityDataAccessor<Boolean> TRAINING = SynchedEntityData.defineId(DroneEntity.class,EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> PAINT = SynchedEntityData.defineId(DroneEntity.class,EntityDataSerializers.INT);
+    public boolean isTraining() { return entityData.get(TRAINING); }
+    public void setTraining(boolean training) { if(!level().isClientSide()) entityData.set(TRAINING,training); }
+    public void setPaint(int paint) { if(!level().isClientSide()) entityData.set(PAINT,Math.clamp(paint,0,3)); }
+    public int getPaint() { return entityData.get(PAINT); }
+    public void setReplayPaint(int paint) { if(level().isClientSide()) entityData.set(PAINT,Math.clamp(paint,0,3)); }
+    public int getTint() { return switch(entityData.get(PAINT)) {case 1 -> 0xFFE7C58C; case 2 -> 0xFF9AB58D; case 3 -> 0xFFE89282; default -> -1;}; }
+    private double maximumSpeed;
+    private double maximumAltitude=-Double.MAX_VALUE;
+    public double maximumSpeed() { return maximumSpeed; }
+    public double maximumAltitude() { return maximumAltitude; }
+
+    private final io.github.riveyder.shahed.replay.ReplayBuffer replay = new io.github.riveyder.shahed.replay.ReplayBuffer();
+    public java.util.List<io.github.riveyder.shahed.replay.ReplayFrame> replayFrames() { return replay.snapshot(); }
+    private void recordFrame() { maximumSpeed=Math.max(maximumSpeed,getDeltaMovement().length()*20);maximumAltitude=Math.max(maximumAltitude,getY());replay.add(new io.github.riveyder.shahed.replay.ReplayFrame(getX(),getY(),getZ(),getYRot(),getXRot(),getRoll())); }
+    public void setReplayRoll(float roll) { if(level().isClientSide()) entityData.set(ROLL,roll); }
+
+    private int impactCooldown;
 
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
@@ -64,6 +88,7 @@ public final class DroneEntity extends Entity {
         inputAge = 0;
         if (!isFlying()) {
             flightTicks = 0;
+            maximumSpeed=0;maximumAltitude=getY();
             entityData.set(FLYING, true);
         }
     }
@@ -71,6 +96,8 @@ public final class DroneEntity extends Entity {
     /** Disarming removes commanded thrust; momentum, aerodynamic forces and gravity remain. */
     public void stopControl() {
         control = DroneInput.IDLE;
+        throttle = 0;
+        entityData.set(THROTTLE, 0.0F);
         entityData.set(FLYING, false);
         inputAge = 0;
         needsSync = true;
@@ -79,6 +106,8 @@ public final class DroneEntity extends Entity {
     public boolean isFlying() {
         return entityData.get(FLYING);
     }
+
+    public float getThrottle() { return entityData.get(THROTTLE); }
 
     public int getFlightTicks() {
         return flightTicks;
@@ -99,11 +128,16 @@ public final class DroneEntity extends Entity {
 
     @Override
     public void tick() {
+        if (isRemoved()) return;
+        if (impactCooldown > 0) impactCooldown--;
         previousRoll = getRoll();
         super.tick();
         if (level().isClientSide()) {
             interpolation.interpolate();
             return;
+        }
+        if (isFlying() || flightTicks>0) {
+            recordFrame();
         }
         // A missing pilot/input removes thrust commands; it never suspends the simulation.
         if (isFlying()) {
@@ -116,6 +150,11 @@ public final class DroneEntity extends Entity {
         // Angular inertia: rates and bank settle over time, rather than snapping the velocity
         // vector to the new heading. Space/Ctrl provide an arcade pitch/climb assist.
         float pitchDemand = input.pitch() * 3.0F;
+        if (!isFlying() && !onGround()) {
+            // A disconnected aircraft settles nose-down through angular acceleration,
+            // retaining its current attitude and angular momentum at disarm time.
+            pitchDemand = Mth.clamp((28.0F - getXRot()) * 0.035F, -1.0F, 1.0F);
+        }
         if (input.vertical() != 0) {
             pitchDemand += Mth.clamp((-input.vertical() * 22.0F - getXRot()) * 0.10F, -2.5F, 2.5F);
         }
@@ -142,6 +181,7 @@ public final class DroneEntity extends Entity {
         float requestedThrottle = Math.max(Math.max(0, input.forward()), Math.max(0, input.vertical()) * 0.85F);
         if (input.brake() || input.forward() < 0) requestedThrottle = 0;
         throttle = Mth.lerp(requestedThrottle > throttle ? 0.09F : 0.045F, throttle, requestedThrottle);
+        entityData.set(THROTTLE, Math.round(throttle * 100) / 100.0F);
         double forwardAirspeed = Math.max(0, oldVelocity.dot(forward));
         double lift = Math.min(0.040, forwardAirspeed * forwardAirspeed * 0.041);
         double airBrake = input.brake() ? 0.11 : Math.max(0, -input.forward()) * 0.065;
@@ -178,6 +218,13 @@ public final class DroneEntity extends Entity {
                 Math.abs(actual.x - velocity.x) > 0.00001 ? 0 : velocity.x,
                 Math.abs(actual.y - velocity.y) > 0.00001 ? 0 : velocity.y,
                 Math.abs(actual.z - velocity.z) > 0.00001 ? 0 : velocity.z));
+        double impact = velocity.subtract(actual).length();
+        if (impact > 0.18 && impactCooldown == 0) {
+            impactCooldown = 8;
+            serverLevel.playSound(null,getX(),getY(),getZ(),
+                    io.github.riveyder.shahed.registry.ModSounds.IMPACT,net.minecraft.sounds.SoundSource.NEUTRAL,1,1);
+            if(!isTraining()) hurtServer(serverLevel,damageSources().flyIntoWall(),(float)((impact-0.18)*26));
+        }
         needsSync = true;
     }
 
@@ -193,7 +240,9 @@ public final class DroneEntity extends Entity {
     }
 
     /** All callers run on the server thread: validate the complete hitbox before adding the entity. */
-    public static boolean spawn(ServerLevel level, Player player, Vec3 position) {
+    public static boolean spawn(ServerLevel level, Player player, Vec3 position) { return spawn(level,player,position,false); }
+
+    public static boolean spawn(ServerLevel level, Player player, Vec3 position,boolean training) {
         if (!player.getAbilities().instabuild) {
             return false;
         }
@@ -203,6 +252,8 @@ public final class DroneEntity extends Entity {
         drone.setYRot(player.getYRot());
         drone.setXRot(0.0F);
         drone.setOwnerUuid(player.getUUID());
+        drone.setTraining(training);
+        if(training) drone.setPaint(2);
 
         AABB bounds = drone.getBoundingBox();
         int minimumY = level.dimensionType().minY();
@@ -236,6 +287,9 @@ public final class DroneEntity extends Entity {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(ROLL, 0.0F);
+        builder.define(TRAINING,false);
+        builder.define(PAINT,0);
+        builder.define(THROTTLE, 0.0F);
         builder.define(FLYING, false);
     }
 
@@ -248,6 +302,8 @@ public final class DroneEntity extends Entity {
                 return Optional.empty();
             }
         }).orElse(null);
+        setTraining(input.getBooleanOr("Training",false));
+        setPaint(input.getIntOr("Paint",0));
         float savedHealth = input.getFloatOr("Health", 10.0F);
         health = Float.isFinite(savedHealth) ? Mth.clamp(savedHealth, 0.1F, 10.0F) : 10.0F;
         // Never restore a live session or queued commands. Vanilla Motion retains momentum.
@@ -265,6 +321,8 @@ public final class DroneEntity extends Entity {
         if (ownerUuid != null) {
             output.putString("Owner", ownerUuid.toString());
         }
+        output.putBoolean("Training",isTraining());
+        output.putInt("Paint",entityData.get(PAINT));
         output.putFloat("Health", health);
         output.putFloat("YawVelocity", yawVelocity);
         output.putFloat("PitchVelocity", pitchVelocity);
@@ -279,14 +337,36 @@ public final class DroneEntity extends Entity {
 
     @Override
     public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
-        if (isRemoved() || isInvulnerableToBase(source) || !Float.isFinite(amount) || amount <= 0) {
+        if (destroyed || isRemoved() || isInvulnerableToBase(source) || !Float.isFinite(amount) || amount <= 0) {
             return false;
         }
         health -= amount;
         if (health <= 0 || (source.getEntity() instanceof Player player && player.getAbilities().instabuild)) {
-            stopControl();
-            discard();
+            destroy();
         }
+        return true;
+    }
+
+    public boolean isDestroyed() { return destroyed; }
+
+    /** Mark before effects: chained explosion damage cannot re-enter this transaction. */
+    public boolean destroy() {
+        if (!(level() instanceof ServerLevel server) || destroyed || isRemoved()) return false;
+        destroyed=true;
+        recordFrame();
+        io.github.riveyder.shahed.control.DroneSessions.destroyed(this);
+        stopControl();
+        if(isTraining()) { discard();return true; }
+        var policy=io.github.riveyder.shahed.control.DroneConfig.get();
+        server.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,
+                getX(),getY()+0.5,getZ(),1,0,0,0,0);
+        server.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE,
+                getX(),getY()+0.5,getZ(),20,0.7,0.4,0.7,0.06);
+        server.playSound(null,getX(),getY(),getZ(),io.github.riveyder.shahed.registry.ModSounds.BLAST,
+                net.minecraft.sounds.SoundSource.NEUTRAL,1.5F,1);
+        server.explode(this,getX(),getY()+0.4,getZ(),policy.explosionPower(),false,
+                policy.destroyBlocks()?Level.ExplosionInteraction.TNT:Level.ExplosionInteraction.NONE);
+        discard();
         return true;
     }
 

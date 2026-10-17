@@ -12,9 +12,9 @@ import net.minecraft.world.phys.Vec3;
 
 /** Places an owned drone beside the clicked block; piloting requires a separate controller session. */
 public final class DroneItem extends Item {
-    public DroneItem(Properties properties) {
-        super(properties);
-    }
+    private final boolean training;
+    public DroneItem(Properties properties) { this(properties,false); }
+    public DroneItem(Properties properties,boolean training) { super(properties);this.training=training; }
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
@@ -35,7 +35,7 @@ public final class DroneItem extends Item {
         BlockPos position = context.getClickedPos().relative(context.getClickedFace());
         if (!level.mayInteract(player, context.getClickedPos())
                 || !player.mayUseItemAt(position, context.getClickedFace(), context.getItemInHand())
-                || !DroneEntity.spawn(level, player, Vec3.atBottomCenterOf(position))) {
+                || !DroneEntity.spawn(level, player, Vec3.atBottomCenterOf(position),training)) {
             player.sendOverlayMessage(Component.translatable("commands.shahed.spawn_blocked"));
             return InteractionResult.FAIL;
         }

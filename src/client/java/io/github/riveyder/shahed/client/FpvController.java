@@ -33,6 +33,7 @@ public final class FpvController {
     private static UUID droneUuid;
     private static int entityId;
     private static int sequence;
+    private static boolean spectating;
     private static ClientLevel sessionLevel;
     private static LocalPlayer sessionPlayer;
     private static Entity previousCamera;
@@ -46,6 +47,7 @@ public final class FpvController {
     private static float cameraRoll;
     private static long lastCameraFrame;
     private static boolean cameraInitialized;
+    private static long returnFadeStart;
 
     public static void initialize() {
         FpvKeys.initialize();
@@ -69,8 +71,12 @@ public final class FpvController {
         HudElementRegistry.addLast(ShahedMod.id("fpv_telemetry"), FpvController::extractHud);
     }
 
+    public static boolean acceptsReplay(UUID id) { return id.equals(sessionId); }
+
+    public static FpvSettings settings() { return SETTINGS; }
+
     public static boolean isActive() {
-        return sessionId != null;
+        return sessionId != null || ReplayController.isPlaying();
     }
 
     public static boolean isCameraDrone(Entity entity) {
@@ -80,8 +86,10 @@ public final class FpvController {
     private static void receiveSession(SessionPayload payload) {
         Minecraft client = Minecraft.getInstance();
         if (!payload.active()) {
-            if (isActive() && sessionId.equals(payload.sessionId())) {
+            if (sessionId != null && sessionId.equals(payload.sessionId())) {
+                boolean destroyed=payload.reason().equals("message.shahed.session.reason.destroyed");
                 exit(false);
+                if(destroyed) client.gui.setScreen(new SignalLostScreen());
                 if (client.player != null && !payload.reason().isBlank()) {
                     client.player.sendOverlayMessage(Component.translatable(payload.reason()));
                 }
@@ -97,6 +105,7 @@ public final class FpvController {
         }
         exit(false);
         sessionId = payload.sessionId();
+        spectating=payload.reason().equals("spectator");
         droneUuid = payload.droneUuid();
         entityId = payload.entityId();
         sessionLevel = client.level;
@@ -111,7 +120,7 @@ public final class FpvController {
     }
 
     private static void receiveTelemetry(TelemetryPayload payload) {
-        if (isActive() && sessionId.equals(payload.sessionId()) && droneUuid.equals(payload.droneUuid())) {
+        if (sessionId != null && sessionId.equals(payload.sessionId()) && droneUuid.equals(payload.droneUuid())) {
             telemetry = payload;
         }
     }
@@ -132,7 +141,7 @@ public final class FpvController {
         } else {
             FpvKeys.clearSessionClicks();
         }
-        if (!isActive()) return;
+        if (sessionId == null) return;
 
         if (client.level != sessionLevel || client.player != sessionPlayer || !client.player.isAlive()) {
             exit(true);
@@ -146,6 +155,8 @@ public final class FpvController {
         }
         // A chunk-stream transition can briefly remove an entity. Retain the lens and reacquire its ID;
         // only the server's explicit session end decides whether the drone was actually destroyed.
+
+        if(spectating) { clearMouse();return; }
 
         boolean canControl = drone != null && client.gui.screen() == null && client.gui.overlay() == null
                 && client.isWindowActive() && client.mouseHandler.isMouseGrabbed();
@@ -206,7 +217,8 @@ public final class FpvController {
     }
 
     public static void exit(boolean notifyServer) {
-        if (!isActive()) return;
+        ReplayController.stop(notifyServer);
+        if (sessionId == null) return;
         Minecraft client = Minecraft.getInstance();
         UUID endingSession = sessionId;
         sessionId = null;
@@ -246,11 +258,23 @@ public final class FpvController {
         }
     }
 
+    public static void beginReturnFade() { returnFadeStart=System.nanoTime(); }
+
     private static void extractHud(GuiGraphicsExtractor graphics, DeltaTracker delta) {
+        if(returnFadeStart!=0) {
+            float remaining=1-(System.nanoTime()-returnFadeStart)/450_000_000F;
+            if(remaining<=0) returnFadeStart=0;
+            else graphics.fill(0,0,graphics.guiWidth(),graphics.guiHeight(),((int)(remaining*255)<<24)|0x050908);
+        }
         if (!isActive()) return;
         Minecraft client = Minecraft.getInstance();
         if (client.gui.hud.isHidden()) return;
+        if(ReplayController.isPlaying()) {
+            graphics.text(client.font,Component.literal(ReplayController.label()),10,10,0xFFB9FFD1);
+            return;
+        }
         int color = 0xFFB9FFD1;
+        if(spectating) graphics.text(client.font,Component.literal("SPECTATOR"),10,56,color);
         graphics.fill(6, 6, 174, telemetry == null ? 24 : 50, 0x65000D08);
         if (telemetry == null) {
             graphics.text(client.font, Component.translatable("hud.shahed.waiting"), 10, 11, color);

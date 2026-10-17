@@ -29,6 +29,12 @@ abstract class CameraMixin {
 
     @Inject(method = "alignWithEntity", at = @At("TAIL"))
     private void shahed$alignFpv(float partialTick, CallbackInfo callback) {
+        if(io.github.riveyder.shahed.client.ReplayController.isCamera(entity)) {
+            var frame=io.github.riveyder.shahed.client.ReplayController.frame(partialTick);
+            setRotation(io.github.riveyder.shahed.client.ReplayController.cameraYaw(partialTick),18.0F);
+            setPosition(io.github.riveyder.shahed.client.ReplayController.cameraPosition(partialTick));
+            return;
+        }
         if (!(entity instanceof DroneEntity drone) || !FpvController.isCameraDrone(entity)) return;
         FpvController.CameraPose pose = FpvController.cameraPose(partialTick);
         setRotation(pose.yaw(), pose.pitch());
@@ -38,14 +44,14 @@ abstract class CameraMixin {
         up.set(0, 1, 0).rotate(rotation);
         left.set(-1, 0, 0).rotate(rotation);
         matrixPropertiesDirty |= 3;
-        // The visible lens is on the nose at local -Z = 30 px, rather than at the
+        // The visible lens is on the nose at local -Z = 33.7 px, rather than at the
         // entity centre. Rotate this fixed mount with the drone's real attitude;
         // the smoothed viewing direction must not slide the lens around its body.
         Quaternionf mount = new Quaternionf().rotationYXZ(
                 Mth.PI - drone.getYRot(partialTick) * Mth.DEG_TO_RAD,
                 -drone.getXRot(partialTick) * Mth.DEG_TO_RAD,
                 drone.getRoll(partialTick) * Mth.DEG_TO_RAD);
-        Vector3f offset = new Vector3f(0.0F, 0.55F, -1.875F).rotate(mount);
+        Vector3f offset = new Vector3f(0.0F, 0.49F, -2.15F).rotate(mount);
         setPosition(new Vec3(Mth.lerp(partialTick, drone.xo, drone.getX()) + offset.x(),
                 Mth.lerp(partialTick, drone.yo, drone.getY()) + offset.y(),
                 Mth.lerp(partialTick, drone.zo, drone.getZ()) + offset.z()));

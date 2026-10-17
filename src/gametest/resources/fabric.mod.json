@@ -9,7 +9,13 @@
       "io.github.riveyder.shahed.test.StageOneGameTests",
       "io.github.riveyder.shahed.test.StageTwoGameTests",
       "io.github.riveyder.shahed.test.PolishFlightGameTests",
-      "io.github.riveyder.shahed.test.RemoteFpvGameTests"
+      "io.github.riveyder.shahed.test.RemoteFpvGameTests",
+      "io.github.riveyder.shahed.test.DestructionGameTests",
+      "io.github.riveyder.shahed.test.ReplayGameTests",
+      "io.github.riveyder.shahed.test.ExtrasGameTests"
+    ],
+    "fabric-client-gametest": [
+      "io.github.riveyder.shahed.test.ClientSmokeTest"
     ]
   },
   "depends": {
