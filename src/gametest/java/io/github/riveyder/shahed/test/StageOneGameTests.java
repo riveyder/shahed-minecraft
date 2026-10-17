@@ -24,7 +24,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 
-/** Server-side integration checks for the deliberately stationary first-stage drone. */
+/** Regression checks for registration, placement, persistence and an unpiloted drone's safe hover. */
 public final class StageOneGameTests {
     @GameTest
     public void spawningRequiresCreativeAndPreservesTheCreatorsIdentity(GameTestHelper helper) {
@@ -86,7 +86,7 @@ public final class StageOneGameTests {
         helper.assertTrue(drone.level() == helper.getLevel(), "Drone must belong to the server test world");
         helper.assertTrue(drone.isNoGravity(), "A first-stage drone must remain a static display entity");
 
-        // Exercise the real entity lifecycle without introducing any flight or control implementation.
+        // Unpiloted drones must remain stationary even after adding the flight implementation.
         for (int tick = 0; tick < 5; tick++) {
             drone.tick();
         }

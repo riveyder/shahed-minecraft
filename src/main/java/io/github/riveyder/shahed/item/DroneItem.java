@@ -10,7 +10,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.phys.Vec3;
 
-/** Places a static prototype beside the clicked block; it never starts a flight session. */
+/** Places an owned drone beside the clicked block; piloting requires a separate controller session. */
 public final class DroneItem extends Item {
     public DroneItem(Properties properties) {
         super(properties);

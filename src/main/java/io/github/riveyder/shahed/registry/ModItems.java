@@ -2,6 +2,7 @@ package io.github.riveyder.shahed.registry;
 
 import io.github.riveyder.shahed.ShahedMod;
 import io.github.riveyder.shahed.item.DroneItem;
+import io.github.riveyder.shahed.item.ControllerItem;
 import java.util.List;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
@@ -19,10 +20,10 @@ import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.equipment.Equippable;
 
 public final class ModItems {
-    public static final Item DRONE = register("drone", DroneItem::new, prototypeProperties());
-    public static final Item CONTROLLER = register("controller", Item::new, prototypeProperties());
+    public static final Item DRONE = register("drone", DroneItem::new, equipmentProperties("drone"));
+    public static final Item CONTROLLER = register("controller", ControllerItem::new, equipmentProperties("controller"));
     public static final Item FPV_GOGGLES = register("fpv_goggles", Item::new,
-            prototypeProperties().component(DataComponents.EQUIPPABLE,
+            equipmentProperties("fpv_goggles").component(DataComponents.EQUIPPABLE,
                     Equippable.builder(EquipmentSlot.HEAD).setDamageOnHurt(false).build()));
 
     public static final ResourceKey<CreativeModeTab> EQUIPMENT_TAB_KEY =
@@ -41,9 +42,9 @@ public final class ModItems {
     private ModItems() {
     }
 
-    private static Item.Properties prototypeProperties() {
+    private static Item.Properties equipmentProperties(String name) {
         return new Item.Properties().stacksTo(1).component(DataComponents.LORE,
-                new ItemLore(List.of(Component.translatable("item.shahed.stage_one"))));
+                new ItemLore(List.of(Component.translatable("item.shahed." + name + ".hint"))));
     }
 
     private static Item register(String path, Function<Item.Properties, Item> factory, Item.Properties properties) {

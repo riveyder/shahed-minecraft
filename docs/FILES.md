@@ -1,57 +1,38 @@
-# Файлы этапа 1
+# Файлы проекта
 
-Созданы 48 файлов проекта. Сгенерированные `build/`, `.gradle/`, игровые миры и настройки облачной машины сюда не входят.
+Репозиторий содержит основу этапа 1 и реализацию этапа 2. Сгенерированные `build/`, `.gradle/`, игровые миры и настройки облачной машины не входят в Git.
 
-```text
-.gitattributes
-.github/workflows/build.yml
-.gitignore
-LICENSE
-README.md
-build.gradle
-docs/FILES.md
-docs/PROJECT_PLAN.md
-docs/TESTING.md
-docs/model/README.md
-docs/model/drone-model.json
-docs/model/drone-preview.png
-docs/model/drone.bbmodel
-docs/model/export_model.py
-docs/model/generate_assets.py
-gradle.properties
-gradle/wrapper/gradle-wrapper.jar
-gradle/wrapper/gradle-wrapper.properties
-gradlew
-gradlew.bat
-settings.gradle
-src/client/java/io/github/riveyder/shahed/client/ShahedClient.java
-src/client/java/io/github/riveyder/shahed/client/model/DroneModel.java
-src/client/java/io/github/riveyder/shahed/client/renderer/DroneRenderState.java
-src/client/java/io/github/riveyder/shahed/client/renderer/DroneRenderer.java
-src/gametest/java/io/github/riveyder/shahed/test/StageOneGameTests.java
-src/gametest/resources/fabric.mod.json
-src/main/java/io/github/riveyder/shahed/ShahedMod.java
-src/main/java/io/github/riveyder/shahed/command/DroneCommands.java
-src/main/java/io/github/riveyder/shahed/entity/DroneEntity.java
-src/main/java/io/github/riveyder/shahed/item/DroneItem.java
-src/main/java/io/github/riveyder/shahed/registry/ModEntities.java
-src/main/java/io/github/riveyder/shahed/registry/ModItems.java
-src/main/resources/assets/shahed/icon.png
-src/main/resources/assets/shahed/items/controller.json
-src/main/resources/assets/shahed/items/drone.json
-src/main/resources/assets/shahed/items/fpv_goggles.json
-src/main/resources/assets/shahed/lang/en_us.json
-src/main/resources/assets/shahed/lang/ru_ru.json
-src/main/resources/assets/shahed/lang/uk_ua.json
-src/main/resources/assets/shahed/models/item/controller.json
-src/main/resources/assets/shahed/models/item/drone.json
-src/main/resources/assets/shahed/models/item/fpv_goggles.json
-src/main/resources/assets/shahed/textures/entity/drone.png
-src/main/resources/assets/shahed/textures/item/controller.png
-src/main/resources/assets/shahed/textures/item/drone.png
-src/main/resources/assets/shahed/textures/item/fpv_goggles.png
-src/main/resources/fabric.mod.json
-```
+| Путь | Назначение |
+| --- | --- |
+| `build.gradle`, `gradle.properties`, `settings.gradle` | Сборка Fabric Loom, закреплённые версии, серверные GameTest |
+| `gradlew`, `gradlew.bat`, `gradle/wrapper/` | Gradle Wrapper |
+| `.github/workflows/build.yml` | CI-сборка и Artifacts JAR/отчёта |
+| `src/main/java/io/github/riveyder/shahed/ShahedMod.java` | Общая регистрация мода |
+| `src/main/java/io/github/riveyder/shahed/entity/DroneEntity.java` | Состояние дрона, сохранение владельца, серверный аркадный полёт, синхронизация наклона и повреждения |
+| `src/main/java/io/github/riveyder/shahed/control/DroneInput.java` | Ограниченный формат команд управления |
+| `src/main/java/io/github/riveyder/shahed/control/DroneSessions.java` | Серверные права, сеансы, оборудование, дальность, телеметрия и завершение |
+| `src/main/java/io/github/riveyder/shahed/item/DroneItem.java` | Творческое размещение собственного дрона |
+| `src/main/java/io/github/riveyder/shahed/item/ControllerItem.java` | Привязка UUID/владельца в предмете и запрос подключения |
+| `src/main/java/io/github/riveyder/shahed/network/` | Регистрация и кодеки пакетов сеанса, ввода, выхода и телеметрии |
+| `src/main/java/io/github/riveyder/shahed/mixin/` | Ограничение действий тела игрока на сервере и временное подавление гравитации без изменения сохранённого флага |
+| `src/main/java/io/github/riveyder/shahed/registry/` | Регистрация сущности, предметов и творческой вкладки |
+| `src/main/java/io/github/riveyder/shahed/command/DroneCommands.java` | `/shahed kit` и `/shahed spawn` |
+| `src/client/java/io/github/riveyder/shahed/client/ShahedClient.java` | Клиентская регистрация |
+| `src/client/java/io/github/riveyder/shahed/client/FpvController.java` | FPV-камера, ввод, HUD и клиентская очистка сеанса |
+| `src/client/java/io/github/riveyder/shahed/client/FpvKeys.java` | Настраиваемые назначения клавиш |
+| `src/client/java/io/github/riveyder/shahed/client/FpvSettings.java` | Локальные предпочтения мыши и камеры |
+| `src/client/java/io/github/riveyder/shahed/client/FpvSettingsScreen.java` | Меню настроек и выхода |
+| `src/client/java/io/github/riveyder/shahed/client/mixin/` | Подключение FPV к камере, мыши и обычному вводу Minecraft |
+| `src/client/java/io/github/riveyder/shahed/client/model/`, `renderer/` | Модель и отображение дрона с наклонами |
+| `src/main/resources/fabric.mod.json`, `src/main/resources/shahed.mixins.json`, `src/client/resources/shahed.client.mixins.json` | Метаданные и конфигурация mixin |
+| `src/main/resources/assets/shahed/` | Иконка, модели/текстуры предметов и сущности, локализации `en_us`, `ru_ru`, `uk_ua` |
+| `src/gametest/java/io/github/riveyder/shahed/test/StageOneGameTests.java` | Регистрация, размещение и сохранение основы |
+| `src/gametest/java/io/github/riveyder/shahed/test/StageTwoGameTests.java` | Серверные проверки полёта, владения, ввода и жизненного цикла сеансов |
+| `src/gametest/resources/fabric.mod.json` | Регистрация тестового мода |
+| `README.md`, `docs/TESTING.md`, `docs/PROJECT_PLAN.md` | Использование, протокол проверок и дорожная карта |
+| `docs/model/` | Исходники модели, Blockbench, предпросмотр и инструменты ресурсов |
+| `.gitignore`, `.gitattributes`, `LICENSE` | Правила репозитория и лицензия |
 
-Устанавливаемый результат сборки: `build/libs/shahed-fpv-mayhem-0.1.0.jar`.
+Бинарный мод этапа 2: `build/libs/shahed-fpv-mayhem-0.2.0.jar`.
 Отчёт автоматических серверных тестов: `build/gametest-results.xml`.
+Локальные пользовательские настройки клиента: `config/shahed-fpv.json` в каталоге игрового профиля, не исходный файл проекта.
