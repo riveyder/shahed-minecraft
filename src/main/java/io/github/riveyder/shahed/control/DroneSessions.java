@@ -2,6 +2,7 @@ package io.github.riveyder.shahed.control;
 
 import io.github.riveyder.shahed.entity.DroneEntity;
 import io.github.riveyder.shahed.item.ControllerItem;
+import io.github.riveyder.shahed.mixin.ChunkMapFpvAccess;
 import io.github.riveyder.shahed.network.InputPayload;
 import io.github.riveyder.shahed.network.SessionPayload;
 import io.github.riveyder.shahed.network.TelemetryPayload;
@@ -25,16 +26,15 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 
 /** Server-thread-only authority for equipment, ownership, session identity and one flight step per tick. */
 public final class DroneSessions {
-    public static final float MAX_RANGE = 96.0F;
-    public static final int INPUT_TIMEOUT_TICKS = 40;
+    public static final int INPUT_IDLE_TICKS = 10;
     private static final Map<UUID, Session> PLAYERS = new HashMap<>();
     private static final Map<UUID, UUID> DRONES = new HashMap<>();
 
@@ -42,6 +42,7 @@ public final class DroneSessions {
     }
 
     public static void register() {
+        DroneChunkTracking.initialize();
         ServerTickEvents.START_SERVER_TICK.register(DroneSessions::tick);
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> end(handler.player, "disconnect"));
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
@@ -80,13 +81,24 @@ public final class DroneSessions {
         return session == null ? Optional.empty() : Optional.of(session.drone.getUUID());
     }
 
-    public static float rangeFor(ServerPlayer player) {
-        int viewDistance = Math.min(player.requestedViewDistance(), player.level().getServer().getPlayerList().getViewDistance());
-        // Keep a complete chunk of margin at both ends of the player's streamed terrain.
-        return Math.min(MAX_RANGE, Math.max(16.0F, (viewDistance - 2) * 16.0F));
+    /** The viewing origin is separate from the physical body and its vanilla loading tickets. */
+    public static Vec3 trackingPosition(ServerPlayer player) {
+        Session session = PLAYERS.get(player.getUUID());
+        return session == null ? player.position() : session.drone.position();
+    }
+
+    public static ChunkPos trackingChunk(ServerPlayer player) {
+        Session session = PLAYERS.get(player.getUUID());
+        return session == null ? player.chunkPosition() : session.drone.chunkPosition();
     }
 
     public static boolean connect(ServerPlayer player, DroneEntity drone, ItemStack stack) {
+        // 0.2.1 removes fields from telemetry/session packets. Reject older clients before
+        // immobilizing the body; a missing protocol must never create an invisible live session.
+        if (player.connection != null && (!ServerPlayNetworking.canSend(player, SessionPayload.TYPE)
+                || !ServerPlayNetworking.canSend(player, TelemetryPayload.TYPE))) {
+            return reject(player, "incompatible_client");
+        }
         if (!ControllerItem.getBoundOwner(stack).filter(player.getUUID()::equals).isPresent()
                 || !drone.getOwnerUuid().filter(player.getUUID()::equals).isPresent()) {
             return reject(player, "wrong_owner");
@@ -108,12 +120,7 @@ public final class DroneSessions {
         if (DRONES.containsKey(drone.getUUID())) {
             return reject(player, "occupied");
         }
-        float range = rangeFor(player);
-        if (player.position().distanceToSqr(drone.position()) > range * range
-                || !loaded(player.level(), drone.position()) || !tracked(player, drone.position())) {
-            return reject(player, "too_far");
-        }
-        Session session = new Session(player, drone, range);
+        Session session = new Session(player, drone);
         PLAYERS.put(player.getUUID(), session);
         DRONES.put(drone.getUUID(), player.getUUID());
         player.setDeltaMovement(Vec3.ZERO);
@@ -121,7 +128,9 @@ public final class DroneSessions {
             player.connection.resetFlyingTicks();
         }
         drone.setControlInput(DroneInput.IDLE);
-        send(player, new SessionPayload(true, session.id, drone.getUUID(), drone.getId(), range, ""));
+        if (player.connection != null) session.chunks.update(player, drone.chunkPosition());
+        refreshTracking(player);
+        send(player, new SessionPayload(true, session.id, drone.getUUID(), drone.getId(), ""));
         telemetry(session);
         message(player, Component.translatable("message.shahed.controller.connected", drone.getUUID().toString().substring(0, 8)));
         return true;
@@ -162,12 +171,14 @@ public final class DroneSessions {
         }
         DRONES.remove(session.drone.getUUID(), player.getUUID());
         session.drone.stopControl();
+        session.chunks.close();
+        if (!reason.equals("disconnect") && !reason.equals("server_stopping")) refreshTracking(player);
         player.setDeltaMovement(Vec3.ZERO);
         if (player.connection != null) {
             // Resume ordinary gravity without inheriting floating ticks from the anchored body.
             player.connection.resetFlyingTicks();
         }
-        send(player, new SessionPayload(false, session.id, session.drone.getUUID(), session.drone.getId(), session.range,
+        send(player, new SessionPayload(false, session.id, session.drone.getUUID(), session.drone.getId(),
                 "message.shahed.session.reason." + reason));
         if (player.connection != null && player.isAlive() && player.level() == session.level
                 && !reason.equals("disconnect") && !reason.equals("server_stopping")) {
@@ -196,9 +207,13 @@ public final class DroneSessions {
                 // Movement packets are suppressed, so vanilla cannot refresh its floating checks.
                 session.player.connection.resetFlyingTicks();
             }
-            // Brief packet loss preserves motion; longer silence brakes before the hard disconnect.
-            session.drone.setControlInput(session.ticksSinceInput >= 10
-                    ? new DroneInput(0, 0, 0, 0, 0, true) : session.pending);
+            // A lost input packet cannot hold thrust forever, or end the viewing session.
+            session.drone.setControlInput(session.ticksSinceInput >= INPUT_IDLE_TICKS
+                    ? DroneInput.IDLE : session.pending);
+            if (session.player.connection != null) {
+                session.chunks.update(session.player, session.drone.chunkPosition());
+            }
+            refreshTracking(session.player);
             session.ticksSinceInput++;
             session.packetsThisTick = 0;
             session.previousHurtTime = session.player.hurtTime;
@@ -232,25 +247,15 @@ public final class DroneSessions {
                 || !drone.getOwnerUuid().filter(player.getUUID()::equals).isPresent()) {
             return "drone_unavailable";
         }
-        float range = Math.min(session.range, rangeFor(player));
-        Vec3 predicted = drone.position().add(drone.getDeltaMovement());
-        if (session.bodyPosition.distanceToSqr(drone.position()) > range * range
-                || session.bodyPosition.distanceToSqr(predicted) > range * range
-                || !loaded(session.level, drone.position()) || !loaded(session.level, predicted)
-                || !tracked(player, drone.position()) || !tracked(player, predicted)) {
-            return "range";
-        }
-        return session.ticksSinceInput >= INPUT_TIMEOUT_TICKS ? "input_timeout" : null;
+        return null;
     }
 
-    private static boolean loaded(ServerLevel level, Vec3 position) {
-        return level.getChunkSource().hasChunk(Mth.floor(position.x) >> 4, Mth.floor(position.z) >> 4);
-    }
-
-    private static boolean tracked(ServerPlayer player, Vec3 position) {
-        // Headless mock players have no connection/streaming view.
-        return player.connection == null || player.getChunkTrackingView().contains(
-                Mth.floor(position.x) >> 4, Mth.floor(position.z) >> 4);
+    private static void refreshTracking(ServerPlayer player) {
+        if (player.connection == null || player.isRemoved()) return;
+        // Vanilla normally refreshes terrain only when the body changes section. The drone moves instead.
+        var chunks = player.level().getChunkSource();
+        ((ChunkMapFpvAccess) chunks.chunkMap).shahed$updateChunkTracking(player);
+        chunks.move(player);
     }
 
     private static boolean heldBinding(ServerPlayer player, UUID droneId) {
@@ -281,9 +286,8 @@ public final class DroneSessions {
 
     private static void telemetry(Session session) {
         DroneEntity drone = session.drone;
-        float signal = (float) Math.clamp(1.0 - session.bodyPosition.distanceTo(drone.position()) / session.range, 0.0, 1.0);
         send(session.player, new TelemetryPayload(session.id, drone.getUUID(), drone.getDeltaMovement().length() * 20.0,
-                drone.getY(), signal, drone.getFlightTicks()));
+                drone.getY(), drone.getFlightTicks()));
     }
 
     private static final class Session {
@@ -292,7 +296,7 @@ public final class DroneSessions {
         private final DroneEntity drone;
         private final ServerLevel level;
         private final Vec3 bodyPosition;
-        private final float range;
+        private final DroneChunkTracking chunks;
         private final float health;
         private DroneInput pending = DroneInput.IDLE;
         private int sequence = -1;
@@ -301,12 +305,12 @@ public final class DroneSessions {
         private int telemetryTicks;
         private int previousHurtTime;
 
-        private Session(ServerPlayer player, DroneEntity drone, float range) {
+        private Session(ServerPlayer player, DroneEntity drone) {
             this.player = player;
             this.drone = drone;
             this.level = player.level();
             this.bodyPosition = player.position();
-            this.range = range;
+            this.chunks = new DroneChunkTracking(level);
             this.health = player.getHealth();
             this.previousHurtTime = player.hurtTime;
         }

@@ -24,7 +24,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 
-/** Regression checks for registration, placement, persistence and an unpiloted drone's safe hover. */
+/** Regression checks for registration, placement, persistence and an unpiloted drone's gravity. */
 public final class StageOneGameTests {
     @GameTest
     public void spawningRequiresCreativeAndPreservesTheCreatorsIdentity(GameTestHelper helper) {
@@ -74,27 +74,30 @@ public final class StageOneGameTests {
     }
 
     @GameTest
-    public void registeredDroneSpawnsAndStaysStationary(GameTestHelper helper) {
+    public void registeredUnpilotedDroneFallsInsteadOfHovering(GameTestHelper helper) {
         helper.assertTrue(id("drone").equals(BuiltInRegistries.ENTITY_TYPE.getKey(ModEntities.DRONE)),
                 "The drone entity type must be registered as shahed:drone");
 
-        DroneEntity drone = helper.spawn(ModEntities.DRONE, 2, 2, 2);
-        UUID entityUuid = drone.getUUID();
-        Vec3 position = drone.position();
+        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 24, 3);
+        try {
+            UUID entityUuid = drone.getUUID();
+            Vec3 position = drone.position();
+            helper.assertTrue(drone.getType() == ModEntities.DRONE, "Spawned entity has the wrong type");
+            helper.assertTrue(drone.level() == helper.getLevel(), "Drone must belong to the server test world");
+            helper.assertFalse(drone.isFlying(), "An unpiloted drone must not have active control authority");
+            for (int tick = 0; tick < 5; tick++) {
+                drone.tick();
+            }
 
-        helper.assertTrue(drone.getType() == ModEntities.DRONE, "Spawned entity has the wrong type");
-        helper.assertTrue(drone.level() == helper.getLevel(), "Drone must belong to the server test world");
-        helper.assertTrue(drone.isNoGravity(), "A first-stage drone must remain a static display entity");
-
-        // Unpiloted drones must remain stationary even after adding the flight implementation.
-        for (int tick = 0; tick < 5; tick++) {
-            drone.tick();
+            helper.assertTrue(drone.getY() < position.y - 0.05,
+                    "An uncontrolled airborne drone without thrust must lose altitude");
+            helper.assertTrue(drone.getDeltaMovement().y < 0,
+                    "Gravity must act on an unpiloted drone rather than freezing it in the air");
+            helper.assertTrue(drone.getUUID().equals(entityUuid), "Ticking must preserve the entity UUID");
+            helper.succeed();
+        } finally {
+            drone.discard();
         }
-
-        helper.assertTrue(drone.position().equals(position), "An uncontrolled drone must not move");
-        helper.assertTrue(drone.getDeltaMovement().equals(Vec3.ZERO), "An uncontrolled drone must have zero velocity");
-        helper.assertTrue(drone.getUUID().equals(entityUuid), "Ticking must preserve the entity UUID");
-        helper.succeed();
     }
 
     @GameTest
@@ -140,7 +143,11 @@ public final class StageOneGameTests {
                 "Saving and loading must preserve the drone yaw");
         helper.assertTrue(restored.position().distanceToSqr(original.position()) < 0.000001,
                 "Saving and loading must preserve the drone position");
-        helper.assertTrue(restored.isNoGravity(), "Loading must preserve the stationary first-stage behavior");
+        helper.assertFalse(restored.isFlying(), "Loading must not restore a live control session");
+        Vec3 savedPosition = restored.position();
+        restored.tick();
+        helper.assertTrue(restored.getY() < savedPosition.y,
+                "A restored drone without thrust must obey gravity");
         helper.succeed();
     }
 

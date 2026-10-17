@@ -28,8 +28,6 @@ import net.minecraft.world.entity.Entity;
 
 /** One local session. The server owns authority, motion, ownership and telemetry. */
 public final class FpvController {
-    private static final long HEARTBEAT_TIMEOUT_NANOS = 5_000_000_000L;
-    private static final long TRACKING_GRACE_NANOS = 2_000_000_000L;
     private static final FpvSettings SETTINGS = FpvSettings.load();
     private static UUID sessionId;
     private static UUID droneUuid;
@@ -40,8 +38,6 @@ public final class FpvController {
     private static Entity previousCamera;
     private static CameraType previousPerspective;
     private static DroneEntity drone;
-    private static long startedAt;
-    private static long lastHeartbeat;
     private static TelemetryPayload telemetry;
     private static double pendingYawDegrees;
     private static double pendingPitchDegrees;
@@ -97,7 +93,6 @@ public final class FpvController {
             return;
         }
         if (payload.sessionId().equals(sessionId)) {
-            lastHeartbeat = System.nanoTime();
             return;
         }
         exit(false);
@@ -109,7 +104,6 @@ public final class FpvController {
         previousCamera = client.getCameraEntity();
         previousPerspective = client.options.getCameraType();
         sequence = 0;
-        startedAt = lastHeartbeat = System.nanoTime();
         clearMouse();
         // Do not let the click that connected the controller use a second item or mine a block.
         drainVanillaClicks(client);
@@ -119,7 +113,6 @@ public final class FpvController {
     private static void receiveTelemetry(TelemetryPayload payload) {
         if (isActive() && sessionId.equals(payload.sessionId()) && droneUuid.equals(payload.droneUuid())) {
             telemetry = payload;
-            lastHeartbeat = System.nanoTime();
         }
     }
 
@@ -141,14 +134,8 @@ public final class FpvController {
         }
         if (!isActive()) return;
 
-        long now = System.nanoTime();
         if (client.level != sessionLevel || client.player != sessionPlayer || !client.player.isAlive()) {
             exit(true);
-            return;
-        }
-        if (now - lastHeartbeat > HEARTBEAT_TIMEOUT_NANOS) {
-            exit(true);
-            client.player.sendOverlayMessage(Component.translatable("message.shahed.session.reason.timeout"));
             return;
         }
         Entity candidate = client.level.getEntity(entityId);
@@ -156,10 +143,9 @@ public final class FpvController {
             drone = tracked;
             client.options.setCameraType(CameraType.FIRST_PERSON);
             if (client.getCameraEntity() != drone) client.setCameraEntity(drone);
-        } else if (drone != null || now - startedAt > TRACKING_GRACE_NANOS) {
-            exit(true);
-            return;
         }
+        // A chunk-stream transition can briefly remove an entity. Retain the lens and reacquire its ID;
+        // only the server's explicit session end decides whether the drone was actually destroyed.
 
         boolean canControl = drone != null && client.gui.screen() == null && client.gui.overlay() == null
                 && client.isWindowActive() && client.mouseHandler.isMouseGrabbed();
@@ -174,8 +160,8 @@ public final class FpvController {
                     axis(FpvKeys.UP.isDown(), FpvKeys.DOWN.isDown()),
                     Mth.clamp(yaw, -1.0F, 1.0F), Mth.clamp(pitch, -1.0F, 1.0F), FpvKeys.BRAKE.isDown());
         } else {
-            // Losing focus/opening any menu must immediately stop acceleration and brake inertia.
-            input = new DroneInput(0, 0, 0, 0, 0, true);
+            // Menus/focus loss release the controls; the physical aircraft continues coasting and descending.
+            input = DroneInput.IDLE;
         }
         clearMouse();
         if (client.getConnection() != null && ClientPlayNetworking.canSend(InputPayload.TYPE)) {
@@ -265,17 +251,15 @@ public final class FpvController {
         Minecraft client = Minecraft.getInstance();
         if (client.gui.hud.isHidden()) return;
         int color = 0xFFB9FFD1;
-        int speedColor = telemetry != null && telemetry.signal() < 0.2F ? 0xFFFFBF60 : color;
-        graphics.fill(6, 6, 174, telemetry == null ? 24 : 62, 0x65000D08);
+        graphics.fill(6, 6, 174, telemetry == null ? 24 : 50, 0x65000D08);
         if (telemetry == null) {
             graphics.text(client.font, Component.translatable("hud.shahed.waiting"), 10, 11, color);
         } else {
             graphics.text(client.font, Component.translatable("hud.shahed.speed", decimal(telemetry.speed())), 10, 10, color);
             graphics.text(client.font, Component.translatable("hud.shahed.altitude", decimal(telemetry.altitude())), 10, 22, color);
-            graphics.text(client.font, Component.translatable("hud.shahed.signal", Math.round(telemetry.signal() * 100)), 10, 34, speedColor);
             int seconds = Math.max(0, telemetry.flightTicks() / 20);
             graphics.text(client.font, Component.translatable("hud.shahed.flight_time",
-                    String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60)), 10, 46, color);
+                    String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60)), 10, 34, color);
         }
         graphics.text(client.font, Component.translatable("hud.shahed.drone", droneUuid.toString()),
                 10, graphics.guiHeight() - 27, color);

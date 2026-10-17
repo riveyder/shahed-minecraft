@@ -38,10 +38,10 @@ public final class StageTwoGameTests {
         InputPayload input = new InputPayload(session, drone, 413,
                 input(0.875F, -0.125F, 0.25F, -0.625F, 0.375F, true));
         ExitPayload exit = new ExitPayload(session);
-        SessionPayload connected = new SessionPayload(true, session, drone, 13579, 80.5F, "");
-        SessionPayload ended = new SessionPayload(false, session, drone, 13579, 80.5F,
+        SessionPayload connected = new SessionPayload(true, session, drone, 13579, "");
+        SessionPayload ended = new SessionPayload(false, session, drone, 13579,
                 "message.shahed.session.reason.equipment");
-        TelemetryPayload telemetry = new TelemetryPayload(session, drone, 12.75, 103.125, 0.8125F, 12345);
+        TelemetryPayload telemetry = new TelemetryPayload(session, drone, 12.75, 103.125, 12345);
         RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(),
                 helper.getLevel().registryAccess());
         try {
@@ -57,11 +57,11 @@ public final class StageTwoGameTests {
             helper.assertTrue(exit.equals(ExitPayload.CODEC.decode(buffer)),
                     "The exit codec must preserve the session UUID");
             helper.assertTrue(connected.equals(SessionPayload.CODEC.decode(buffer)),
-                    "The session codec must preserve the active camera target and range");
+                    "The session codec must preserve the active camera target");
             helper.assertTrue(ended.equals(SessionPayload.CODEC.decode(buffer)),
                     "The session codec must preserve termination state and reason");
             helper.assertTrue(telemetry.equals(TelemetryPayload.CODEC.decode(buffer)),
-                    "The telemetry codec must preserve speed, altitude, signal and flight time");
+                    "The telemetry codec must preserve speed, altitude and flight time");
             helper.assertFalse(buffer.isReadable(), "All encoded packet bytes must be consumed exactly once");
             helper.succeed();
         } finally {
@@ -70,20 +70,22 @@ public final class StageTwoGameTests {
     }
 
     @GameTest
-    public void controlledFlightAcceleratesClimbsAndCountsFlightTime(GameTestHelper helper) {
-        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 4, 3);
+    public void controlledFlightAcceleratesAndCountsFlightTime(GameTestHelper helper) {
+        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 24, 3);
         try {
             Vec3 start = drone.position();
             drone.setControlInput(input(1, 0, 1, 0, 0, false));
             drone.tick();
             double initialSpeed = drone.getDeltaMovement().length();
-            tick(drone, 5);
+            for (int tick = 0; tick < 29; tick++) {
+                drone.setControlInput(input(1, 0, 1, 0, 0, false));
+                drone.tick();
+            }
 
             helper.assertTrue(drone.position().z > start.z + 0.1, "Forward input must move the drone forward");
-            helper.assertTrue(drone.position().y > start.y + 0.1, "Climb input must gain altitude");
             helper.assertTrue(drone.getDeltaMovement().length() > initialSpeed,
                     "Holding the throttle must accelerate rather than teleport to a fixed speed");
-            helper.assertTrue(drone.getFlightTicks() >= 6, "Flight time must advance while flying");
+            helper.assertTrue(drone.getFlightTicks() >= 30, "Flight time must advance while flying");
             helper.assertTrue(drone.isFlying(), "Applying controls must arm the flight simulation");
             helper.succeed();
         } finally {
@@ -93,10 +95,12 @@ public final class StageTwoGameTests {
 
     @GameTest
     public void yawPitchAndStrafeProduceAControlledBankedTurn(GameTestHelper helper) {
-        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 4, 3);
+        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 24, 3);
         try {
             drone.setYRot(0);
             drone.setXRot(0);
+            // A wing needs airflow before banking can redirect lift and the flight path.
+            drone.setDeltaMovement(new Vec3(0, 0, 0.65));
             drone.setControlInput(input(1, 1, 0, 1, 1, false));
             tick(drone, 6);
 
@@ -116,16 +120,14 @@ public final class StageTwoGameTests {
 
     @GameTest
     public void brakingRemovesMomentumFasterThanReleasingTheThrottle(GameTestHelper helper) {
-        DroneEntity coasting = helper.spawn(ModEntities.DRONE, 2, 4, 2);
-        DroneEntity braking = helper.spawn(ModEntities.DRONE, 6, 4, 2);
+        DroneEntity coasting = helper.spawn(ModEntities.DRONE, 2, 24, 2);
+        DroneEntity braking = helper.spawn(ModEntities.DRONE, 6, 24, 2);
         try {
-            coasting.setControlInput(input(1, 0, 0, 0, 0, false));
-            braking.setControlInput(input(1, 0, 0, 0, 0, false));
-            for (int tick = 0; tick < 4; tick++) {
-                coasting.tick();
-                braking.tick();
-            }
-            double poweredSpeed = coasting.getDeltaMovement().length();
+            // Identical already-airborne fixtures isolate passive drag from residual engine spool.
+            Vec3 cruisingMomentum = new Vec3(0.12, -0.05, 0.5);
+            coasting.setDeltaMovement(cruisingMomentum);
+            braking.setDeltaMovement(cruisingMomentum);
+            double poweredSpeed = horizontalSpeed(cruisingMomentum);
             coasting.setControlInput(DroneInput.IDLE);
             braking.setControlInput(input(0, 0, 0, 0, 0, true));
             for (int tick = 0; tick < 3; tick++) {
@@ -133,11 +135,11 @@ public final class StageTwoGameTests {
                 braking.tick();
             }
 
-            helper.assertTrue(coasting.getDeltaMovement().length() > 0.001,
+            helper.assertTrue(horizontalSpeed(coasting.getDeltaMovement()) > 0.001,
                     "Releasing the throttle must preserve some arcade inertia");
-            helper.assertTrue(coasting.getDeltaMovement().length() < poweredSpeed,
+            helper.assertTrue(horizontalSpeed(coasting.getDeltaMovement()) < poweredSpeed,
                     "An unpowered drone must gradually lose momentum");
-            helper.assertTrue(braking.getDeltaMovement().length() < coasting.getDeltaMovement().length(),
+            helper.assertTrue(horizontalSpeed(braking.getDeltaMovement()) < horizontalSpeed(coasting.getDeltaMovement()),
                     "The brake must remove momentum faster than passive drag");
             helper.succeed();
         } finally {
@@ -147,21 +149,26 @@ public final class StageTwoGameTests {
     }
 
     @GameTest
-    public void stoppingControlImmediatelyLeavesASafeStationaryDrone(GameTestHelper helper) {
-        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 4, 3);
+    public void stoppingControlPreservesMomentumAndLetsAnUnpilotedAircraftDescend(GameTestHelper helper) {
+        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 40, 3);
         try {
-            drone.setControlInput(input(1, 0, 1, 1, -1, false));
-            tick(drone, 4);
-            helper.assertTrue(drone.getDeltaMovement().lengthSqr() > 0, "The fixture must first be moving");
+            drone.setControlInput(input(1, 0, 0, 1, 0, false));
+            tick(drone, 8);
+            Vec3 momentum = drone.getDeltaMovement();
+            helper.assertTrue(horizontalSpeed(momentum) > 0.05, "The fixture must first be flying forward");
             drone.stopControl();
+            helper.assertTrue(drone.getDeltaMovement().equals(momentum),
+                    "Leaving FPV must not instantly erase the aircraft's linear momentum");
             Vec3 stopPosition = drone.position();
-            tick(drone, 4);
+            tick(drone, 8);
 
-            helper.assertTrue(drone.position().distanceToSqr(stopPosition) < 0.000001,
-                    "A drone without a pilot must remain safely at its last position");
-            helper.assertTrue(drone.getDeltaMovement().equals(Vec3.ZERO),
-                    "Stopping control must clear residual velocity");
-            helper.assertFalse(drone.isFlying(), "Stopping control must disarm the flight simulation");
+            helper.assertTrue(horizontalDistance(drone.position().subtract(stopPosition)) > 0.1,
+                    "An unpiloted aircraft must keep coasting after control ends");
+            helper.assertTrue(drone.position().y < stopPosition.y,
+                    "An unpiloted aircraft with insufficient thrust must descend instead of hovering");
+            helper.assertTrue(horizontalSpeed(drone.getDeltaMovement()) > 0,
+                    "Passive drag must not be replaced by an abrupt velocity reset");
+            helper.assertFalse(drone.isFlying(), "Leaving FPV must remove the active pilot's throttle authority");
             helper.succeed();
         } finally {
             drone.discard();
@@ -170,7 +177,7 @@ public final class StageTwoGameTests {
 
     @GameTest
     public void malformedAndExcessiveAxesCannotCorruptFlightState(GameTestHelper helper) {
-        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 4, 3);
+        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 24, 3);
         try {
             drone.setControlInput(input(Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY,
                     Float.NaN, Float.POSITIVE_INFINITY, false));
@@ -197,11 +204,11 @@ public final class StageTwoGameTests {
     @GameTest
     public void flightCannotPassThroughASolidWall(GameTestHelper helper) {
         for (int x = 1; x <= 5; x++) {
-            for (int y = 3; y <= 5; y++) {
-                helper.setBlock(x, y, 5, Blocks.STONE);
+            for (int y = 8; y <= 30; y++) {
+                helper.setBlock(x, y, 7, Blocks.STONE);
             }
         }
-        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 4, 3);
+        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 24, 3);
         try {
             drone.setYRot(0);
             double startZ = drone.getZ();
@@ -210,7 +217,7 @@ public final class StageTwoGameTests {
                 drone.tick();
             }
 
-            double wallZ = helper.absolutePos(new BlockPos(3, 4, 5)).getZ();
+            double wallZ = helper.absolutePos(new BlockPos(3, 24, 7)).getZ();
             helper.assertTrue(drone.getZ() > startZ + 0.1, "The drone must first move towards the wall");
             helper.assertTrue(drone.getBoundingBox().maxZ <= wallZ + 0.00001,
                     "The complete drone hitbox must remain in front of the solid wall");
@@ -225,20 +232,24 @@ public final class StageTwoGameTests {
     }
 
     @GameTest
-    public void aDroneStopsWhenItsPilotStopsSendingControls(GameTestHelper helper) {
-        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 5, 3);
+    public void anAbandonedInputStreamReturnsToNeutralWithoutFreezingTheAircraft(GameTestHelper helper) {
+        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 64, 3);
         try {
             drone.setYRot(0);
             drone.setControlInput(input(1, 0, 0, 0, 0, false));
-            tick(drone, 45);
-
-            helper.assertFalse(drone.isFlying(), "A lost input stream must trigger the drone's own watchdog");
-            helper.assertTrue(drone.getDeltaMovement().equals(Vec3.ZERO),
-                    "A timed-out drone must not continue on its last throttle");
-            Vec3 stopped = drone.position();
+            tick(drone, 8);
+            helper.assertTrue(drone.getDeltaMovement().z > 0.02, "The fixture must first gain forward momentum");
+            tick(drone, 38);
+            Vec3 before = drone.position();
+            double horizontalSpeed = horizontalSpeed(drone.getDeltaMovement());
             tick(drone, 3);
-            helper.assertTrue(drone.position().equals(stopped),
-                    "After input timeout, the aircraft must remain safely stationary");
+
+            helper.assertTrue(drone.position().y < before.y,
+                    "Timed-out controls must let the aircraft descend, never park it in the sky");
+            helper.assertTrue(horizontalSpeed(drone.getDeltaMovement()) < horizontalSpeed,
+                    "A stale throttle must be released so drag can reduce forward momentum");
+            helper.assertTrue(drone.getDeltaMovement().y < 0,
+                    "Input silence must not suppress gravity or zero the complete velocity");
             helper.succeed();
         } finally {
             drone.discard();
@@ -246,8 +257,8 @@ public final class StageTwoGameTests {
     }
 
     @GameTest
-    public void aReloadedDroneRetainsItsOwnerButCannotKeepFlyingWithoutAPilot(GameTestHelper helper) {
-        DroneEntity original = helper.spawn(ModEntities.DRONE, 3, 4, 3);
+    public void aReloadedDroneRetainsItsOwnerButCannotRestoreAnOldThrottle(GameTestHelper helper) {
+        DroneEntity original = helper.spawn(ModEntities.DRONE, 3, 24, 3);
         try {
             UUID owner = UUID.randomUUID();
             original.setOwnerUuid(owner);
@@ -260,14 +271,21 @@ public final class StageTwoGameTests {
             restored.load(TagValueInput.create(ProblemReporter.DISCARDING,
                     helper.getLevel().registryAccess(), output.buildResult()));
             Vec3 position = restored.position();
+            Vec3 savedMomentum = original.getDeltaMovement();
+            helper.assertTrue(restored.getDeltaMovement().distanceToSqr(savedMomentum) < 0.000001,
+                    "Loading must preserve physical momentum without restoring a pilot or queued throttle");
             restored.tick();
             helper.assertTrue(restored.getOwnerUuid().filter(owner::equals).isPresent(),
                     "Reloading must preserve drone ownership");
             helper.assertTrue(restored.getUUID().equals(original.getUUID()),
                     "Reloading must preserve the UUID used by the controller");
             helper.assertFalse(restored.isFlying(), "A saved drone must not restore a live pilot session");
-            helper.assertTrue(restored.position().distanceToSqr(position) < 0.000001,
-                    "Reloading must not resume stale flight velocity");
+            helper.assertTrue(restored.getDeltaMovement().y < savedMomentum.y,
+                    "A reloaded airborne drone must again experience gravity without an old engine command");
+            helper.assertTrue(horizontalSpeed(restored.getDeltaMovement()) < horizontalSpeed(savedMomentum),
+                    "A reload must coast under drag rather than resume the old engine command");
+            helper.assertTrue(restored.position().distanceToSqr(position) > 0,
+                    "Reloading an airborne drone must not create a stationary display object");
             helper.succeed();
         } finally {
             original.discard();
@@ -345,7 +363,7 @@ public final class StageTwoGameTests {
             DroneSessions.tick(helper.getLevel().getServer());
             helper.assertFalse(DroneSessions.isControlling(pilot),
                     "Removing goggles must terminate an existing FPV session");
-            helper.assertFalse(drone.isFlying(), "Equipment loss must stop the drone");
+            helper.assertFalse(drone.isFlying(), "Equipment loss must release the pilot controls");
             helper.succeed();
         } finally {
             DroneSessions.end(pilot, "test_cleanup");
@@ -371,7 +389,7 @@ public final class StageTwoGameTests {
             controller.use(helper.getLevel(), pilot, InteractionHand.MAIN_HAND);
             helper.assertFalse(DroneSessions.isControlling(pilot),
                     "Using the controller again must terminate FPV");
-            helper.assertFalse(drone.isFlying(), "Toggling FPV off must safely stop flight");
+            helper.assertFalse(drone.isFlying(), "Toggling FPV off must release pilot controls");
             helper.succeed();
         } finally {
             DroneSessions.end(pilot, "test_cleanup");
@@ -418,8 +436,8 @@ public final class StageTwoGameTests {
     public void independentPilotsKeepTheirBodiesAndControlsSeparate(GameTestHelper helper) {
         ServerPlayer first = pilot(helper, 2, 2, 2);
         ServerPlayer second = pilot(helper, 5, 2, 2);
-        DroneEntity forward = ownedDrone(helper, first, 2, 4, 4);
-        DroneEntity climbing = ownedDrone(helper, second, 6, 4, 4);
+        DroneEntity forward = ownedDrone(helper, first, 2, 40, 4);
+        DroneEntity climbing = ownedDrone(helper, second, 6, 40, 4);
         try {
             helper.assertTrue(DroneSessions.connect(first, forward, equippedController(first, forward)),
                     "The first pilot must connect to their drone");
@@ -429,26 +447,31 @@ public final class StageTwoGameTests {
             Vec3 secondBody = second.position();
             Vec3 forwardStart = forward.position();
             Vec3 climbingStart = climbing.position();
+            forward.setDeltaMovement(new Vec3(0, 0, 0.65));
+            climbing.setDeltaMovement(new Vec3(0, 0, 0.65));
             helper.assertTrue(DroneSessions.accept(first, new InputPayload(
                             DroneSessions.sessionId(first).orElseThrow(), forward.getUUID(), 1,
                             input(1, 0, 0, 0, 0, false))), "The first pilot's input must be accepted");
             helper.assertTrue(DroneSessions.accept(second, new InputPayload(
                             DroneSessions.sessionId(second).orElseThrow(), climbing.getUUID(), 1,
                             input(0, 0, 1, 0, 0, false))), "The second pilot's input must be accepted");
-            DroneSessions.tick(helper.getLevel().getServer());
-            forward.tick();
-            climbing.tick();
+            for (int tick = 0; tick < 6; tick++) {
+                DroneSessions.tick(helper.getLevel().getServer());
+                forward.tick();
+                climbing.tick();
+            }
 
-            helper.assertTrue(forward.position().z > forwardStart.z && forward.position().y == forwardStart.y,
-                    "The first drone must follow only the first pilot's forward input");
-            helper.assertTrue(climbing.position().y > climbingStart.y && climbing.position().z == climbingStart.z,
-                    "The second drone must follow only the second pilot's climb input");
+            helper.assertTrue(forward.getZ() - forwardStart.z > climbing.getZ() - climbingStart.z,
+                    "The first pilot's full engine command must produce greater forward acceleration");
+            helper.assertTrue(climbing.getDeltaMovement().y > forward.getDeltaMovement().y
+                            && climbing.getXRot() < forward.getXRot(),
+                    "Only the second pilot's climb command must pitch its aircraft up and redirect acceleration");
             helper.assertTrue(first.position().equals(firstBody) && second.position().equals(secondBody),
                     "Controlling drones must leave both player bodies at their original positions");
             DroneSessions.end(first, "test_exit");
             helper.assertFalse(DroneSessions.isControlling(first), "The exiting pilot must release control");
             helper.assertTrue(DroneSessions.isControlling(second), "One pilot exiting must preserve the other session");
-            helper.assertFalse(forward.isFlying(), "The exiting pilot's drone must stop safely");
+            helper.assertFalse(forward.isFlying(), "The exiting pilot's throttle authority must end");
             helper.succeed();
         } finally {
             DroneSessions.end(first, "test_cleanup");
@@ -496,32 +519,37 @@ public final class StageTwoGameTests {
     }
 
     @GameTest
-    public void aSilentControlSessionBrakesThenExpiresAndReleasesThePilot(GameTestHelper helper) {
+    public void aSilentControlSessionReleasesStaleThrottleButStaysConnectedAndCanResume(GameTestHelper helper) {
         ServerPlayer pilot = pilot(helper, 2, 2, 2);
-        DroneEntity drone = ownedDrone(helper, pilot, 4, 4, 4);
+        DroneEntity drone = ownedDrone(helper, pilot, 4, 40, 4);
         try {
             ItemStack controller = equippedController(pilot, drone);
             helper.assertTrue(DroneSessions.connect(pilot, drone, controller), "The owner must connect first");
             UUID session = DroneSessions.sessionId(pilot).orElseThrow();
             helper.assertTrue(DroneSessions.accept(pilot, new InputPayload(session, drone.getUUID(), 1,
                             input(1, 0, 0, 0, 0, false))), "Initial throttle must be accepted");
-            tickSession(helper, drone, 10);
-            double poweredSpeed = drone.getDeltaMovement().length();
-            helper.assertTrue(poweredSpeed > 0.1, "The fixture must accelerate before the input stream stops");
-            tickSession(helper, drone, 5);
+            // Age the real session without simulating flight: the next physics tick must see neutral
+            // controls, rather than the old throttle. No artificial drag or velocity reset is injected.
+            for (int tick = 0; tick < 100; tick++) {
+                DroneSessions.tick(helper.getLevel().getServer());
+            }
             helper.assertTrue(DroneSessions.isControlling(pilot),
-                    "Brief input loss must allow recovery before the hard session timeout");
-            helper.assertTrue(drone.getDeltaMovement().length() < poweredSpeed * 0.5,
-                    "A silent session must actively brake rather than keep replaying the last throttle");
-            tickSession(helper, drone, DroneSessions.INPUT_TIMEOUT_TICKS - 15 + 1);
-            helper.assertFalse(DroneSessions.isControlling(pilot),
-                    "A long-silent input stream must terminate the server session");
-            helper.assertFalse(drone.isFlying(), "The expired session must disarm its drone");
-            helper.assertTrue(drone.getDeltaMovement().equals(Vec3.ZERO),
-                    "The expired session must leave no stale flight momentum");
-            helper.assertFalse(DroneSessions.accept(pilot, new InputPayload(session, drone.getUUID(), 2,
-                            input(1, 0, 0, 0, 0, false))),
-                    "Late packets must not revive an expired session");
+                    "Missing input packets must not disconnect a live pilot from an existing drone");
+            helper.assertTrue(DroneSessions.sessionId(pilot).filter(session::equals).isPresent(),
+                    "The same authorized session must survive silence beyond the old timeout");
+            Vec3 neutralStart = drone.position();
+            tick(drone, 8);
+            helper.assertTrue(Math.abs(drone.getZ() - neutralStart.z) < 0.000001,
+                    "A silent session must stop replaying the previous forward throttle");
+            helper.assertTrue(drone.getY() < neutralStart.y,
+                    "Neutral controls must preserve gravity rather than magically hover");
+            helper.assertTrue(DroneSessions.accept(pilot, new InputPayload(session, drone.getUUID(), 2,
+                            input(1, 0, 1, 0, 0, false))),
+                    "A fresh valid packet must resume control in the existing session");
+            DroneSessions.tick(helper.getLevel().getServer());
+            tick(drone, 6);
+            helper.assertTrue(drone.getZ() > neutralStart.z + 0.01,
+                    "Recovered input must reach the actual aircraft simulation");
             helper.succeed();
         } finally {
             DroneSessions.end(pilot, "test_cleanup");
@@ -539,7 +567,7 @@ public final class StageTwoGameTests {
             pilot.setHealth(0);
             DroneSessions.tick(helper.getLevel().getServer());
             helper.assertFalse(DroneSessions.isControlling(pilot), "A dead pilot must not retain a session");
-            helper.assertFalse(drone.isFlying(), "A dead pilot's drone must stop");
+            helper.assertFalse(drone.isFlying(), "A dead pilot must lose throttle authority");
 
             pilot.setHealth(20);
             helper.assertTrue(DroneSessions.connect(pilot, drone, controller), "Cleanup must allow a later new session");
@@ -597,6 +625,14 @@ public final class StageTwoGameTests {
             DroneSessions.tick(helper.getLevel().getServer());
             drone.tick();
         }
+    }
+
+    private static double horizontalSpeed(Vec3 vector) {
+        return Math.sqrt(vector.x * vector.x + vector.z * vector.z);
+    }
+
+    private static double horizontalDistance(Vec3 vector) {
+        return horizontalSpeed(vector);
     }
 
     private static boolean finite(Vec3 vector) {

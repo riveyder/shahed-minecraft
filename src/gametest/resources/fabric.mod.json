@@ -7,7 +7,9 @@
   "entrypoints": {
     "fabric-gametest": [
       "io.github.riveyder.shahed.test.StageOneGameTests",
-      "io.github.riveyder.shahed.test.StageTwoGameTests"
+      "io.github.riveyder.shahed.test.StageTwoGameTests",
+      "io.github.riveyder.shahed.test.PolishFlightGameTests",
+      "io.github.riveyder.shahed.test.RemoteFpvGameTests"
     ]
   },
   "depends": {

@@ -37,12 +37,14 @@ public final class DroneEntity extends Entity {
     private int flightTicks;
     private float yawVelocity;
     private float pitchVelocity;
+    private float rollVelocity;
+    private float throttle;
     private float previousRoll;
     private float health = 10.0F;
 
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
-        setNoGravity(true);
+        setNoGravity(false);
     }
 
     public Optional<UUID> getOwnerUuid() {
@@ -66,13 +68,11 @@ public final class DroneEntity extends Entity {
         }
     }
 
-    /** Fail safe: disarming leaves the aircraft hovering, never continuing stale throttle. */
+    /** Disarming removes commanded thrust; momentum, aerodynamic forces and gravity remain. */
     public void stopControl() {
         control = DroneInput.IDLE;
         entityData.set(FLYING, false);
-        setDeltaMovement(Vec3.ZERO);
-        yawVelocity = 0;
-        pitchVelocity = 0;
+        inputAge = 0;
         needsSync = true;
     }
 
@@ -105,52 +105,70 @@ public final class DroneEntity extends Entity {
             interpolation.interpolate();
             return;
         }
-        if (!isFlying()) {
-            setDeltaMovement(Vec3.ZERO);
-            entityData.set(ROLL, Mth.lerp(0.2F, getRoll(), 0.0F));
-            return;
+        // A missing pilot/input removes thrust commands; it never suspends the simulation.
+        if (isFlying()) {
+            flightTicks++;
         }
-        // A second, entity-level watchdog also protects against an abandoned session manager.
-        if (++inputAge > 40) {
-            stopControl();
-            return;
+        DroneInput input = isFlying() && ++inputAge <= 10 ? control : DroneInput.IDLE;
+        Vec3 oldVelocity = getDeltaMovement();
+        double airspeed = oldVelocity.length();
+
+        // Angular inertia: rates and bank settle over time, rather than snapping the velocity
+        // vector to the new heading. Space/Ctrl provide an arcade pitch/climb assist.
+        float pitchDemand = input.pitch() * 3.0F;
+        if (input.vertical() != 0) {
+            pitchDemand += Mth.clamp((-input.vertical() * 22.0F - getXRot()) * 0.10F, -2.5F, 2.5F);
         }
-        flightTicks++;
-        DroneInput input = inputAge > 10 ? new DroneInput(0, 0, 0, 0, 0, true) : control;
-        yawVelocity = Mth.lerp(0.3F, yawVelocity, input.yaw() * 4.5F);
-        pitchVelocity = Mth.lerp(0.3F, pitchVelocity, input.pitch() * 3.0F);
-        setYRot(Mth.wrapDegrees(getYRot() + yawVelocity));
+        yawVelocity = Mth.lerp(0.12F, yawVelocity, input.yaw() * 4.5F);
+        pitchVelocity = Mth.lerp(0.12F, pitchVelocity, Mth.clamp(pitchDemand, -3, 3));
+        float bankTarget = -input.strafe() * 35.0F - input.yaw() * 12.0F;
+        rollVelocity = Mth.clamp((rollVelocity + (bankTarget - getRoll()) * 0.025F) * 0.78F, -3, 3);
+        float bank = Mth.clamp(getRoll() + rollVelocity, -50, 50);
+        entityData.set(ROLL, bank);
+        float bankTurn = (float) (-bank * 0.015 * Math.min(1, airspeed / MAX_SPEED));
+        setYRot(Mth.wrapDegrees(getYRot() + yawVelocity + bankTurn));
         setXRot(Mth.clamp(getXRot() + pitchVelocity, -65.0F, 65.0F));
-        float bank = -input.strafe() * 22.0F - input.yaw() * 12.0F;
-        entityData.set(ROLL, Mth.lerp(0.18F, getRoll(), bank));
 
         double yaw = Math.toRadians(getYRot());
         double pitch = Math.toRadians(getXRot());
+        double roll = Math.toRadians(bank);
         Vec3 forward = new Vec3(-Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch),
                 Math.cos(yaw) * Math.cos(pitch));
         Vec3 right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
-        Vec3 acceleration = forward.scale(input.forward()).add(right.scale(input.strafe()))
-                .add(0, input.vertical(), 0);
-        if (acceleration.lengthSqr() > 1) {
-            acceleration = acceleration.normalize();
-        }
-        Vec3 velocity = input.brake() ? getDeltaMovement().scale(0.62)
-                : getDeltaMovement().add(acceleration.scale(0.055)).scale(0.94);
+        Vec3 wingUp = right.cross(forward).scale(Math.cos(roll)).subtract(right.scale(Math.sin(roll)));
+
+        // Engine spool is independent of linear inertia. Wings provide lift only with airflow;
+        // idle/slow aircraft cannot hover, even while a control session remains connected.
+        float requestedThrottle = Math.max(Math.max(0, input.forward()), Math.max(0, input.vertical()) * 0.85F);
+        if (input.brake() || input.forward() < 0) requestedThrottle = 0;
+        throttle = Mth.lerp(requestedThrottle > throttle ? 0.09F : 0.045F, throttle, requestedThrottle);
+        double forwardAirspeed = Math.max(0, oldVelocity.dot(forward));
+        double lift = Math.min(0.040, forwardAirspeed * forwardAirspeed * 0.041);
+        double airBrake = input.brake() ? 0.11 : Math.max(0, -input.forward()) * 0.065;
+        double drag = 0.008 + 0.024 * airspeed + airBrake + (onGround() ? 0.025 : 0);
+        Vec3 velocity = oldVelocity.scale(Math.exp(-drag))
+                .add(forward.scale(throttle * 0.045))
+                .add(wingUp.scale(lift))
+                .add(0, -0.025, 0);
+        // A fin gradually damps sideslip; banked lift, not a lateral teleport, turns the aircraft.
+        velocity = velocity.subtract(right.scale(oldVelocity.dot(right) * 0.025));
         if (velocity.lengthSqr() > MAX_SPEED * MAX_SPEED) {
             velocity = velocity.normalize().scale(MAX_SPEED);
         }
-        if (velocity.lengthSqr() < 0.000001) {
-            velocity = Vec3.ZERO;
-        }
         AABB sweptBounds = getBoundingBox().expandTowards(velocity);
-        int minimumY = level().dimensionType().minY();
-        if (!(level() instanceof ServerLevel serverLevel)
-                || sweptBounds.minY < minimumY
-                || sweptBounds.maxY > minimumY + level().dimensionType().height()
-                || !level().getWorldBorder().isWithinBounds(sweptBounds)
-                || !areChunksLoaded(serverLevel, sweptBounds)) {
-            setDeltaMovement(Vec3.ZERO);
+        if (!(level() instanceof ServerLevel serverLevel)) return;
+        if (!areChunksLoaded(serverLevel, sweptBounds)) {
+            // Remote view tickets load ahead. Preserve momentum during a loading delay;
+            // querying collisions here would synchronously generate terrain on the tick thread.
+            setDeltaMovement(velocity);
             return;
+        }
+        if (!level().getWorldBorder().isWithinBounds(sweptBounds)) {
+            velocity = new Vec3(0, velocity.y, 0);
+        }
+        int maximumY = level().dimensionType().minY() + level().dimensionType().height();
+        if (sweptBounds.maxY > maximumY && velocity.y > 0) {
+            velocity = new Vec3(velocity.x, 0, velocity.z);
         }
         Vec3 before = position();
         setDeltaMovement(velocity);
@@ -232,10 +250,14 @@ public final class DroneEntity extends Entity {
         }).orElse(null);
         float savedHealth = input.getFloatOr("Health", 10.0F);
         health = Float.isFinite(savedHealth) ? Mth.clamp(savedHealth, 0.1F, 10.0F) : 10.0F;
-        // Never restore a pilot, throttle or momentum after a world/server reload.
+        // Never restore a live session or queued commands. Vanilla Motion retains momentum.
         stopControl();
-        entityData.set(ROLL, 0.0F);
-        setNoGravity(true);
+        throttle = 0;
+        yawVelocity = finiteSaved(input, "YawVelocity", 4.5F);
+        pitchVelocity = finiteSaved(input, "PitchVelocity", 3.0F);
+        rollVelocity = finiteSaved(input, "RollVelocity", 3.0F);
+        entityData.set(ROLL, finiteSaved(input, "Bank", 50.0F));
+        setNoGravity(false);
     }
 
     @Override
@@ -244,6 +266,15 @@ public final class DroneEntity extends Entity {
             output.putString("Owner", ownerUuid.toString());
         }
         output.putFloat("Health", health);
+        output.putFloat("YawVelocity", yawVelocity);
+        output.putFloat("PitchVelocity", pitchVelocity);
+        output.putFloat("RollVelocity", rollVelocity);
+        output.putFloat("Bank", getRoll());
+    }
+
+    private static float finiteSaved(ValueInput input, String key, float limit) {
+        float value = input.getFloatOr(key, 0);
+        return Float.isFinite(value) ? Mth.clamp(value, -limit, limit) : 0;
     }
 
     @Override

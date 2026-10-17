@@ -2,6 +2,15 @@
   "required": true,
   "package": "io.github.riveyder.shahed.mixin",
   "compatibilityLevel": "JAVA_25",
-  "mixins": ["ServerPlayerControlMixin", "ServerPilotGravityMixin"],
-  "injectors": { "defaultRequire": 1 }
+  "mixins": [
+    "ServerPlayerControlMixin",
+    "ServerPilotGravityMixin",
+    "ChunkMapFpvAccess",
+    "ChunkMapFpvMixin",
+    "TrackedEntityFpvMixin",
+    "PlayerChunkSenderFpvMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

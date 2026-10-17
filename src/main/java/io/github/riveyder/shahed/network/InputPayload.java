@@ -9,7 +9,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 public record InputPayload(UUID sessionId, UUID droneUuid, int sequence, DroneInput input)
         implements CustomPacketPayload {
-    public static final Type<InputPayload> TYPE = new Type<>(ShahedMod.id("drone_input"));
+    public static final Type<InputPayload> TYPE = new Type<>(ShahedMod.id("drone_input_v2"));
     public static final StreamCodec<RegistryFriendlyByteBuf, InputPayload> CODEC =
             StreamCodec.ofMember(InputPayload::write, InputPayload::read);
 

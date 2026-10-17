@@ -23,7 +23,7 @@ public final class DroneRenderer extends EntityRenderer<DroneEntity, DroneRender
     public DroneRenderer(EntityRendererProvider.Context context) {
         super(context);
         model = new DroneModel(context.bakeLayer(DroneModel.LAYER));
-        shadowRadius = 0.7F;
+        shadowRadius = 1.65F;
     }
 
     @Override
