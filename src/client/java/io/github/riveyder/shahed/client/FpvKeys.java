@@ -23,6 +23,7 @@ public final class FpvKeys {
     public static final KeyMapping EXIT = key("exit", GLFW.GLFW_KEY_R);
     // O opens Minecraft 26.2's friends list; keep the default usable without a conflict.
     public static final KeyMapping SETTINGS = key("settings", GLFW.GLFW_KEY_K);
+    public static final KeyMapping HUD_MODE = key("hud_mode", GLFW.GLFW_KEY_H);
 
     private static KeyMapping key(String name, int key) {
         return KeyMappingHelper.registerKeyMapping(new KeyMapping("key.shahed." + name,
@@ -34,12 +35,13 @@ public final class FpvKeys {
     }
 
     public static boolean isSessionAction(KeyMapping mapping) {
-        return mapping == EXIT || mapping == SETTINGS;
+        return mapping == EXIT || mapping == SETTINGS || mapping == HUD_MODE;
     }
 
     public static void clearSessionClicks() {
         while (EXIT.consumeClick()) { }
         while (SETTINGS.consumeClick()) { }
+        while (HUD_MODE.consumeClick()) { }
     }
 
     private FpvKeys() {

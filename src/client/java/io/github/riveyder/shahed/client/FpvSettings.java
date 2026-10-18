@@ -19,6 +19,9 @@ public final class FpvSettings {
     public boolean nightVision;
     public boolean directorCamera;
     public boolean humor=true;
+    public boolean minimalHud;
+    public int hudColor;
+    public int hudArgb() { return switch(hudColor) {case 1 -> 0xFFF0F5F3;case 2 -> 0xFFFF7474;default -> 0xFF9DFFC0;}; }
     public double engineVolume = 0.7;
     public double windVolume = 0.35;
 
@@ -50,6 +53,7 @@ public final class FpvSettings {
     }
 
     private void sanitize() {
+        hudColor=Math.clamp(hudColor,0,2);
         engineVolume = Double.isFinite(engineVolume) ? Math.clamp(engineVolume,0,1) : 0.7;
         windVolume = Double.isFinite(windVolume) ? Math.clamp(windVolume,0,1) : 0.35;
         sensitivity = Double.isFinite(sensitivity) ? Math.clamp(sensitivity, 0.1, 3.0) : 1.0;

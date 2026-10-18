@@ -318,7 +318,8 @@ public final class DroneSessions {
     private static void telemetry(Session session) {
         DroneEntity drone = session.drone;
         send(session.player, new TelemetryPayload(session.id, drone.getUUID(), drone.getDeltaMovement().length() * 20.0,
-                drone.getY(), drone.getFlightTicks()));
+                drone.getY(), drone.getFlightTicks(),drone.getDeltaMovement().y*20,
+                drone.getYRot(),drone.getXRot(),drone.getRoll(),drone.getThrottle()));
     }
 
     private static final class Session {

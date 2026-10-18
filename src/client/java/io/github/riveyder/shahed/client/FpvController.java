@@ -122,6 +122,7 @@ public final class FpvController {
     private static void receiveTelemetry(TelemetryPayload payload) {
         if (sessionId != null && sessionId.equals(payload.sessionId()) && droneUuid.equals(payload.droneUuid())) {
             telemetry = payload;
+            FpvHud.receive(payload);
         }
     }
 
@@ -131,6 +132,7 @@ public final class FpvController {
             return;
         }
         if (client.gui.screen() == null && client.isWindowActive()) {
+            if(FpvKeys.HUD_MODE.consumeClick()) { SETTINGS.minimalHud=!SETTINGS.minimalHud;SETTINGS.save(); }
             if (FpvKeys.EXIT.consumeClick() && isActive()) {
                 exit(true);
                 return;
@@ -239,6 +241,7 @@ public final class FpvController {
         previousCamera = null;
         previousPerspective = null;
         telemetry = null;
+        FpvHud.reset();
         cameraInitialized = false;
         clearMouse();
         drainVanillaClicks(client);
@@ -273,22 +276,7 @@ public final class FpvController {
             graphics.text(client.font,Component.literal(ReplayController.label()),10,10,0xFFB9FFD1);
             return;
         }
-        int color = 0xFFB9FFD1;
-        if(spectating) graphics.text(client.font,Component.literal("SPECTATOR"),10,56,color);
-        graphics.fill(6, 6, 174, telemetry == null ? 24 : 50, 0x65000D08);
-        if (telemetry == null) {
-            graphics.text(client.font, Component.translatable("hud.shahed.waiting"), 10, 11, color);
-        } else {
-            graphics.text(client.font, Component.translatable("hud.shahed.speed", decimal(telemetry.speed())), 10, 10, color);
-            graphics.text(client.font, Component.translatable("hud.shahed.altitude", decimal(telemetry.altitude())), 10, 22, color);
-            int seconds = Math.max(0, telemetry.flightTicks() / 20);
-            graphics.text(client.font, Component.translatable("hud.shahed.flight_time",
-                    String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60)), 10, 34, color);
-        }
-        graphics.text(client.font, Component.translatable("hud.shahed.drone", droneUuid.toString()),
-                10, graphics.guiHeight() - 27, color);
-        graphics.text(client.font, Component.translatable("hud.shahed.hint", FpvKeys.EXIT.getTranslatedKeyMessage(),
-                FpvKeys.SETTINGS.getTranslatedKeyMessage()), 10, graphics.guiHeight() - 15, color);
+        FpvHud.render(graphics,spectating);
     }
 
     private static String decimal(double value) {

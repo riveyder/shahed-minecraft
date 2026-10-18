@@ -62,4 +62,4 @@
   "item.shahed.training_drone": "Тренировочный дрон",
   "item.shahed.training_drone.hint": "Переживает столкновения, без взрыва. КРИВЫЕ РУКИ AEROSPACE",
   "message.shahed.session.reason.spectator_revoked": "Владелец запретил просмотр камеры"
-}
+,"key.shahed.hud_mode":"Режим HUD: FULL / MINIMAL"}

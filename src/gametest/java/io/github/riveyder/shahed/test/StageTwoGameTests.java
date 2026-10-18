@@ -41,7 +41,8 @@ public final class StageTwoGameTests {
         SessionPayload connected = new SessionPayload(true, session, drone, 13579, "");
         SessionPayload ended = new SessionPayload(false, session, drone, 13579,
                 "message.shahed.session.reason.equipment");
-        TelemetryPayload telemetry = new TelemetryPayload(session, drone, 12.75, 103.125, 12345);
+        TelemetryPayload telemetry = new TelemetryPayload(session, drone, 12.75, 103.125, 12345,
+                -3.5,-179,22,-31,.73F);
         RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(),
                 helper.getLevel().registryAccess());
         try {
