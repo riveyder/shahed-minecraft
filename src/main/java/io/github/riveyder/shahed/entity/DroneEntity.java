@@ -132,6 +132,9 @@ public final class DroneEntity extends Entity {
         return entityData.get(FLYING);
     }
 
+    public AircraftKind kind() { return AircraftKind.of(getType()); }
+    public double maxSpeed() { return kind().maxSpeed; }
+
     public float getThrottle() { return entityData.get(THROTTLE); }
 
     public int getFlightTicks() {
@@ -318,9 +321,12 @@ public final class DroneEntity extends Entity {
     public static boolean spawn(ServerLevel level, Player player, Vec3 position) { return spawn(level,player,position,false); }
 
     public static boolean spawn(ServerLevel level, Player player, Vec3 position,boolean training) {
+        return spawn(level,player,position,training,AircraftKind.SHAHED);
+    }
+    public static boolean spawn(ServerLevel level, Player player, Vec3 position,boolean training,AircraftKind kind) {
         if(player.level()!=level||io.github.riveyder.shahed.control.DroneDeployment.denial(player)!=null) return false;
 
-        DroneEntity drone = new DroneEntity(ModEntities.DRONE, level);
+        DroneEntity drone = new DroneEntity(kind.type(), level);
         drone.setPos(position.x, position.y, position.z);
         drone.setYRot(player.getYRot());
         drone.setXRot(0.0F);

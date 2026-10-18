@@ -13,8 +13,10 @@ import net.minecraft.world.phys.Vec3;
 /** Places an owned drone beside the clicked block; piloting requires a separate controller session. */
 public final class DroneItem extends Item {
     private final boolean training;
+    private final io.github.riveyder.shahed.entity.AircraftKind kind;
     public DroneItem(Properties properties) { this(properties,false); }
-    public DroneItem(Properties properties,boolean training) { super(properties);this.training=training; }
+    public DroneItem(Properties properties,boolean training) { this(properties,training,io.github.riveyder.shahed.entity.AircraftKind.SHAHED); }
+    public DroneItem(Properties properties,boolean training,io.github.riveyder.shahed.entity.AircraftKind kind) { super(properties);this.training=training;this.kind=kind; }
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
@@ -36,7 +38,7 @@ public final class DroneItem extends Item {
         BlockPos position = context.getClickedPos().relative(context.getClickedFace());
         if (!level.mayInteract(player, context.getClickedPos())
                 || !player.mayUseItemAt(position, context.getClickedFace(), context.getItemInHand())
-                || !DroneEntity.spawn(level, player, Vec3.atBottomCenterOf(position),training)) {
+                || !DroneEntity.spawn(level, player, Vec3.atBottomCenterOf(position),training,kind)) {
             player.sendOverlayMessage(Component.translatable("commands.shahed.spawn_blocked"));
             return InteractionResult.FAIL;
         }

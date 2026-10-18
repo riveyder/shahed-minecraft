@@ -24,6 +24,15 @@ public final class ModEntities {
                     .build(DRONE_KEY)
     );
 
+    public static final EntityType<DroneEntity> QUAD = aircraft("quad",1.6F,.65F,.44F);
+    public static final EntityType<DroneEntity> CONTACT_QUAD = aircraft("contact_quad",1.6F,.7F,.48F);
+    public static final EntityType<DroneEntity> JET = aircraft("jet",2.5F,.9F,.55F);
+    private static EntityType<DroneEntity> aircraft(String id,float width,float height,float eye){
+        var key=ResourceKey.create(Registries.ENTITY_TYPE,ShahedMod.id(id));
+        return Registry.register(BuiltInRegistries.ENTITY_TYPE,key,EntityType.Builder.<DroneEntity>of(DroneEntity::new,MobCategory.MISC)
+                .sized(width,height).eyeHeight(eye).clientTrackingRange(12).updateInterval(1).build(key));
+    }
+
     private ModEntities() {
     }
 
