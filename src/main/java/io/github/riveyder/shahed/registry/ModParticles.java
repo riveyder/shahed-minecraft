@@ -11,6 +11,7 @@ public final class ModParticles {
     public static final SimpleParticleType SMOKE=register("cinematic_smoke");
     public static final SimpleParticleType RING=register("shockwave");
     public static final SimpleParticleType DEBRIS=register("debris");
+    public static final SimpleParticleType RACE_GATE=register("race_gate");
     private static SimpleParticleType register(String name) {return Registry.register(BuiltInRegistries.PARTICLE_TYPE,ShahedMod.id(name),FabricParticleTypes.simple());}
     public static void initialize() {}
     private ModParticles() {}

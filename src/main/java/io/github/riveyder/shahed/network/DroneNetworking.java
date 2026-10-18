@@ -10,6 +10,11 @@ public final class DroneNetworking {
     }
 
     public static void register() {
+        PayloadTypeRegistry.serverboundPlay().register(RaceRequestPayload.TYPE,RaceRequestPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(RaceStatePayload.TYPE,RaceStatePayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(RaceCatalogPayload.TYPE,RaceCatalogPayload.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(RaceRequestPayload.TYPE,
+                (payload,context)->io.github.riveyder.shahed.control.DroneRacing.request(context.player(),payload));
         PayloadTypeRegistry.clientboundPlay().register(ExplosionEffectPayload.TYPE,ExplosionEffectPayload.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(SettingsRequestPayload.TYPE,SettingsRequestPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(SettingsStatePayload.TYPE,SettingsStatePayload.CODEC);

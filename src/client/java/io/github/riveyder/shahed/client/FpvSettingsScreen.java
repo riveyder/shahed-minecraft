@@ -46,6 +46,10 @@ public final class FpvSettingsScreen extends Screen {
                 +"; урон: "+(p.settings().entityDamage()?"включён":"выключен")+". Отойдите от точки. Действие необратимо.")));
     }
     @Override protected void init() {
+        addRenderableWidget(Button.builder(Component.literal("?"),b->minecraft.gui.setScreen(new FpvHelpScreen(this)))
+                .bounds(8,8,20,20).build()).setTooltip(Tooltip.create(Component.translatable("help.shahed.title")));
+        addRenderableWidget(Button.builder(Component.translatable("race.menu"),b->minecraft.gui.setScreen(new RaceScreen(this)))
+                .bounds(width-68,8,60,20).build());
         rows.clear();int tabWidth=Math.min(100,(width-16)/4),start=width/2-tabWidth*2;
         for(int i=0;i<CATEGORIES.length;i++) {int selected=i;var tab=addRenderableWidget(Button.builder(Component.literal(CATEGORIES[i]),b->{
             category=selected;page=0;rebuildWidgets();}).bounds(start+(i%4)*tabWidth,32+(i/4)*22,tabWidth-2,20).build());tab.active=i!=category;}

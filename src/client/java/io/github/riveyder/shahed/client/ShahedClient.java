@@ -18,5 +18,6 @@ public final class ShahedClient implements ClientModInitializer {
         ReplayController.initialize();
         ServerSettingsClient.initialize();
         ExplosionEffects.initialize();
+        RaceClient.initialize();
     }
 }

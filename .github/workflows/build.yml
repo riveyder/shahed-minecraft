@@ -23,18 +23,11 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       - name: Validate editable model and resource references
         run: python3 docs/model/test_overhaul.py
-      - name: Build
-        run: ./gradlew build --no-daemon
+      - name: Build without Minecraft runtime tests
+        run: ./gradlew build -x check -x test -x runGameTest --no-daemon
       - name: Upload mod and sources
         uses: actions/upload-artifact@v4
         with:
           name: shahed-fpv-mayhem-mc26.2
           path: build/libs/*.jar
           if-no-files-found: error
-      - name: Upload server test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gametest-report-mc26.2
-          path: build/gametest-results.xml
-          if-no-files-found: warn

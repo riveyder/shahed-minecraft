@@ -71,6 +71,8 @@ public final class DroneSessions {
         return hasFlightSession(player) || io.github.riveyder.shahed.replay.DroneReplays.isViewing(player);
     }
 
+    public static boolean isPiloting(ServerPlayer player) {var s=PLAYERS.get(player.getUUID());return s!=null&&!s.spectator;}
+
     public static boolean hasFlightSession(ServerPlayer player) { return PLAYERS.containsKey(player.getUUID()); }
 
     public static void destroyed(DroneEntity drone) {

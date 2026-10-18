@@ -20,20 +20,16 @@ public final class DroneCommands {
     public static void register() {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(Commands.literal("shahed")
-                        .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
-                        .then(Commands.literal("kit").executes(context -> giveKit(context.getSource())))
-                        .then(Commands.literal("race")
-                                .then(Commands.literal("add").executes(c->{int count=io.github.riveyder.shahed.control.DroneRacing.add(c.getSource().getPlayerOrException());c.getSource().sendSuccess(()->Component.literal("Контрольных точек: "+count),false);return count;}))
-                                .then(Commands.literal("clear").executes(c->{io.github.riveyder.shahed.control.DroneRacing.clear(c.getSource().getLevel());return 1;}))
-                                .then(Commands.literal("start").executes(c->io.github.riveyder.shahed.control.DroneRacing.start(c.getSource().getPlayerOrException())?1:0)))
-                        .then(Commands.literal("viewers").then(Commands.argument("allowed",com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                        .then(Commands.literal("kit").requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)).executes(context -> giveKit(context.getSource())))
+                        .then(RaceCommands.tree())
+                        .then(Commands.literal("viewers").requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)).then(Commands.argument("allowed",com.mojang.brigadier.arguments.BoolArgumentType.bool())
                                 .executes(context->viewers(context.getSource(),com.mojang.brigadier.arguments.BoolArgumentType.getBool(context,"allowed")))))
-                        .then(Commands.literal("watch").then(Commands.argument("owner",net.minecraft.commands.arguments.EntityArgument.player())
+                        .then(Commands.literal("watch").requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)).then(Commands.argument("owner",net.minecraft.commands.arguments.EntityArgument.player())
                                 .executes(context->watch(context.getSource(),net.minecraft.commands.arguments.EntityArgument.getPlayer(context,"owner")))))
-                        .then(Commands.literal("training").executes(context -> spawnDrone(context.getSource(),true)))
-                        .then(Commands.literal("paint").then(Commands.argument("color",com.mojang.brigadier.arguments.IntegerArgumentType.integer(0,3))
+                        .then(Commands.literal("training").requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)).executes(context -> spawnDrone(context.getSource(),true)))
+                        .then(Commands.literal("paint").requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)).then(Commands.argument("color",com.mojang.brigadier.arguments.IntegerArgumentType.integer(0,3))
                                 .executes(context->paint(context.getSource(),com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context,"color")))))
-                        .then(Commands.literal("spawn").executes(context -> spawnDrone(context.getSource(),false)))));
+                        .then(Commands.literal("spawn").requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)).executes(context -> spawnDrone(context.getSource(),false)))));
     }
 
     private static int giveKit(CommandSourceStack source) throws CommandSyntaxException {
