@@ -56,13 +56,8 @@ public final class ReplayController {
                 var impact=recording.impact();var p=impact.position();
                 if(!impactShown) {
                     impactShown=true;level.removeEntity(ghost.getId(),Entity.RemovalReason.DISCARDED);
-                    if(impact.explosion() && impact.particles()) level.addParticle(ParticleTypes.EXPLOSION_EMITTER,p.x,p.y,p.z,0,0,0);
-                    if(impact.explosion() && impact.sound()) level.playLocalSound(p.x,p.y,p.z,
-                            io.github.riveyder.shahed.registry.ModSounds.BLAST,SoundSource.NEUTRAL,1.5F,1,false);
+                    ExplosionEffects.replay(impact);
                 }
-                if(impact.explosion() && impact.particles() && ReplayTimeline.aftermath(cursor,recording.frames().size(),mode)<45)
-                    for(int i=0;i<2;i++) level.addParticle(ParticleTypes.LARGE_SMOKE,p.x+(level.getRandom().nextDouble()-.5)*2,
-                            p.y+.2,p.z+(level.getRandom().nextDouble()-.5)*2,0,.03,0);
                 camera.setOldPosAndRot();camera.setPos(p.x,p.y,p.z);return;
             }
             ghost.setOldPosAndRot();
@@ -130,6 +125,7 @@ public final class ReplayController {
     public static String label() {return (mode==2?"REPLAY 0.25x | ":"REPLAY 1x | ")+FpvKeys.EXIT.getTranslatedKeyMessage().getString()+" EXIT";}
     public static void stop(boolean notify) {
         if(!isPlaying()) return;
+        ExplosionEffects.clearReplay();
         var client=Minecraft.getInstance();
         if(notify && client.getConnection()!=null && ClientPlayNetworking.canSend(ReplayControlPayload.TYPE))
             ClientPlayNetworking.send(new ReplayControlPayload(recording.sessionId(),0));

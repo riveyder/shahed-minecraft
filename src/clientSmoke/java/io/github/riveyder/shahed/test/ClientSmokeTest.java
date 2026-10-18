@@ -5,6 +5,7 @@ import io.github.riveyder.shahed.client.*;
 import io.github.riveyder.shahed.control.DroneSessions;
 import io.github.riveyder.shahed.control.DroneConfig;
 import io.github.riveyder.shahed.network.SettingsRequestPayload;
+import io.github.riveyder.shahed.network.ExplosionEffectPayload;
 import net.minecraft.server.players.NameAndId;
 import io.github.riveyder.shahed.entity.DroneEntity;
 import io.github.riveyder.shahed.item.ControllerItem;
@@ -66,6 +67,16 @@ public final class ClientSmokeTest implements FabricClientGameTest {
                 if(client.getSoundManager().getSoundEvent(ShahedMod.id("engine"))==null)
                     throw new AssertionError("Engine sound resource did not load");
             });
+            CrashEffectsProbe.captureClient=true;CrashEffectsProbe.CLIENT_SOUNDS.clear();
+            serverContext.runOnServer(server->{
+                var drone=(DroneEntity)server.getPlayerList().getPlayers().getFirst().level().getEntity(droneId.get());
+                for(int i=0;i<5;i++){drone.setControlInput(new io.github.riveyder.shahed.control.DroneInput(1,0,0,0,0,false));drone.tick();}
+            });
+            context.waitFor(client->CrashEffectsProbe.CLIENT_SOUNDS.contains("shahed:startup"));
+            serverContext.runOnServer(server->((DroneEntity)server.getPlayerList().getPlayers().getFirst().level().getEntity(droneId.get())).stopControl());
+            context.waitFor(client->CrashEffectsProbe.CLIENT_SOUNDS.contains("shahed:shutdown"));
+            CrashEffectsProbe.captureClient=false;CrashEffectsProbe.CLIENT_SOUNDS.clear();
+            ShahedMod.LOGGER.info("Engine client: server RPM transition played startup and shutdown");
             serverContext.runOnServer(server->{
                 var p=server.getPlayerList().getPlayers().getFirst();
                 var drone=(DroneEntity)p.level().getEntity(droneId.get());
@@ -99,24 +110,39 @@ public final class ClientSmokeTest implements FabricClientGameTest {
             context.waitTicks(12);
             context.runOnClient(client->{client.gui.setScreen(new FpvSettingsScreen(null,FpvController.settings()));});
             context.waitFor(client->ServerSettingsClient.state().admin());
-            context.clickScreenButton("Урон сущностям [сервер]: Вкл");
+            boolean originalDamage=context.computeOnClient(client->ServerSettingsClient.state().settings().entityDamage());
+            context.clickScreenButton("Урон сущностям [сервер]: "+(originalDamage?"Вкл":"Выкл"));
             context.waitTicks(12);
             context.clickScreenButton("Применить серверные");
-            context.waitFor(client->!ServerSettingsClient.state().settings().entityDamage());
-            serverContext.runOnServer(server->{if(DroneConfig.get().entityDamage()) throw new AssertionError("Menu change did not reach authority");});
+            context.waitFor(client->ServerSettingsClient.state().settings().entityDamage()!=originalDamage);
+            serverContext.runOnServer(server->{if(DroneConfig.get().entityDamage()==originalDamage) throw new AssertionError("Menu change did not reach authority");});
             context.runOnClient(client->{client.options.guiScale().set(1);client.resizeGui();});
             context.waitTicks(2);
             ShahedMod.LOGGER.info("Admin settings scale 1: {}",context.takeScreenshot(label+"-shahed-admin-settings"));
-            context.clickScreenButton("Урон сущностям [сервер]: Выкл");
+            context.clickScreenButton("Урон сущностям [сервер]: "+(!originalDamage?"Вкл":"Выкл"));
             context.waitTicks(12);
             context.clickScreenButton("Применить серверные");
-            context.waitFor(client->ServerSettingsClient.state().settings().entityDamage());
+            context.waitFor(client->ServerSettingsClient.state().settings().entityDamage()==originalDamage);
+            context.clickScreenButton("Набор CHAOS");
+            context.waitTicks(12);
+            context.clickScreenButton("Применить серверные");
+            context.waitForScreen(net.minecraft.client.gui.screens.ConfirmScreen.class);
+            serverContext.runOnServer(server->{if(DroneConfig.get().destroyBlocks())throw new AssertionError("CHAOS applied before UI confirmation");});
+            ShahedMod.LOGGER.info("CHAOS confirmation: {}",context.takeScreenshot(label+"-shahed-chaos-confirm"));
+            context.clickScreenButton("Yes");
+            context.waitFor(client->ServerSettingsClient.state().settings().destroyBlocks()&&ServerSettingsClient.state().settings().maxBlocks()==3072);
+            context.clickScreenButton("Набор SAFE");
+            context.waitTicks(12);
+            context.clickScreenButton("Применить серверные");
+            context.waitFor(client->!ServerSettingsClient.state().settings().destroyBlocks()&&!ServerSettingsClient.state().settings().entityDamage());
+            ShahedMod.LOGGER.info("CHAOS UI: unconfirmed policy unchanged; confirmation applied; SAFE restored without restart");
             context.runOnClient(client->{client.gui.screen().onClose();client.options.guiScale().set(2);client.resizeGui();});
             context.runOnClient(client->FpvController.settings().nightVision=true);
             context.waitTicks(2);
             ShahedMod.LOGGER.info("Night vision screenshot: {}",context.takeScreenshot(label+"-shahed-night-vision"));
             context.runOnClient(client->FpvController.settings().nightVision=false);
             CrashEffectsProbe.CLIENT_PACKETS.clear();
+            CrashEffectsProbe.CLIENT_EFFECTS.clear();CrashEffectsProbe.CLIENT_SOUNDS.clear();
             CrashEffectsProbe.captureClient=true;
             serverContext.runOnServer(server->{
                 var p=server.getPlayerList().getPlayers().getFirst();
@@ -133,35 +159,29 @@ public final class ClientSmokeTest implements FabricClientGameTest {
             });
             context.waitForScreen(SignalLostScreen.class);
             context.runOnClient(client->{if(!ReplayController.available()) throw new AssertionError("Server replay did not arrive");});
-            context.waitFor(client->CrashEffectsProbe.CLIENT_PACKETS.stream().anyMatch(p->p instanceof ClientboundExplodePacket)
-                    && CrashEffectsProbe.CLIENT_PACKETS.stream().anyMatch(p->p instanceof ClientboundSoundPacket sound
-                        && sound.getSound().value()==ModSounds.BLAST && sound.getVolume()>0)
-                    && CrashEffectsProbe.CLIENT_PACKETS.stream().anyMatch(p->p instanceof ClientboundLevelParticlesPacket particles
-                        && particles.getParticle()==ParticleTypes.LARGE_SMOKE && particles.getCount()>=20));
+            context.waitFor(client->CrashEffectsProbe.CLIENT_EFFECTS.size()==1 && CrashEffectsProbe.CLIENT_SOUNDS.contains("shahed:blast"));
             context.runOnClient(client->{
-                long explosions=CrashEffectsProbe.CLIENT_PACKETS.stream().filter(p->p instanceof ClientboundExplodePacket).count();
-                if(explosions!=1) throw new AssertionError("Expected one handled vanilla explosion packet, got "+explosions);
-                if(client.getSoundManager().getSoundEvent(ShahedMod.id("blast"))==null)
-                    throw new AssertionError("Blast sound resource missing");
+                var event=CrashEffectsProbe.CLIENT_EFFECTS.getFirst();
+                if(!event.particles()||!event.sound()) throw new AssertionError("AV flags lost in transit");
+                if(CrashEffectsProbe.CLIENT_PACKETS.stream().anyMatch(p->p instanceof ClientboundExplodePacket))
+                    throw new AssertionError("Cinematic event must not duplicate vanilla explosion effects");
+                if(client.getSoundManager().getSoundEvent(ShahedMod.id("blast_echo"))==null)
+                    throw new AssertionError("Echo sound resource missing");
                 client.gui.setScreen(null);
-                var explosion=(ClientboundExplodePacket)CrashEffectsProbe.CLIENT_PACKETS.stream()
-                        .filter(p->p instanceof ClientboundExplodePacket).findFirst().orElseThrow();
-                Vec3 look=explosion.center().subtract(client.player.getEyePosition());
+                Vec3 look=event.position().subtract(client.player.getEyePosition());
                 client.player.setYRot((float)Math.toDegrees(Math.atan2(-look.x,look.z)));
                 client.player.setXRot((float)-Math.toDegrees(Math.atan2(look.y,look.horizontalDistance())));
-                client.player.yRotO=client.player.getYRot();
-                client.player.xRotO=client.player.getXRot();
+                client.player.yRotO=client.player.getYRot();client.player.xRotO=client.player.getXRot();
             });
-            // Packets queue particles for the next tick; a screenshot in the same tick can be empty.
-            context.waitTicks(2);
+            context.waitTicks(5);
             context.runOnClient(client->{
-                if(CrashEffectsProbe.CLIENT_PACKETS.stream().noneMatch(p->p instanceof ClientboundLevelParticlesPacket particles
-                        && particles.getParticle()==ParticleTypes.EXPLOSION_EMITTER))
-                    throw new AssertionError("Independent explosion burst did not reach client");
-                ShahedMod.LOGGER.info("Crash client verified: one vanilla explosion, blast sound, emitter, smoke; particles={}",
-                        client.particleEngine.countParticles());
+                if(ExplosionEffects.liveParticles()==0||ExplosionEffects.liveParticles()>ExplosionEffects.MAX_PARTICLES)
+                    throw new AssertionError("Cinematic particles missing or over budget");
+                ShahedMod.LOGGER.info("Cinematic client: one AV event, blast playback, {} owned particles",ExplosionEffects.liveParticles());
             });
             ShahedMod.LOGGER.info("Crash screenshot: {}",context.takeScreenshot(label+"-shahed-crash"));
+            context.waitTicks(9);
+            ShahedMod.LOGGER.info("Fireball peak: {}",context.takeScreenshot(label+"-shahed-fireball-peak"));
             context.runOnClient(client->client.gui.setScreen(new SignalLostScreen()));
             ShahedMod.LOGGER.info("Signal screenshot: {}",context.takeScreenshot(label+"-shahed-signal"));
             context.clickScreenButton("REPLAY 0.25x");
@@ -174,7 +194,7 @@ public final class ClientSmokeTest implements FabricClientGameTest {
             context.runOnClient(client->{
                 if(!ReplayController.isPlaying() || client.getCameraEntity()==client.player)
                     throw new AssertionError("Aftermath camera returned before three seconds");
-                if(CrashEffectsProbe.CLIENT_PACKETS.stream().filter(p->p instanceof ClientboundExplodePacket).count()!=1)
+                if(CrashEffectsProbe.CLIENT_EFFECTS.size()!=1)
                     throw new AssertionError("Replay repeated a server explosion");
             });
             ShahedMod.LOGGER.info("Aftermath screenshot: {}",context.takeScreenshot(label+"-shahed-aftermath"));
@@ -184,18 +204,39 @@ public final class ClientSmokeTest implements FabricClientGameTest {
             context.waitFor(client->ReplayController.isPlaying());
             context.waitTicks(2);
             context.runOnClient(client->{
-                var impact=(ClientboundExplodePacket)CrashEffectsProbe.CLIENT_PACKETS.stream().filter(p->p instanceof ClientboundExplodePacket).findFirst().orElseThrow();
-                if(ReplayController.cameraPosition(0).distanceTo(impact.center())>13)
+                var impact=CrashEffectsProbe.CLIENT_EFFECTS.getFirst();
+                if(ReplayController.cameraPosition(0).distanceTo(impact.position())>13)
                     throw new AssertionError("CRASH SITE camera did not start at recorded impact site");
                 FpvController.settings().replayCamera=0;
             });
             context.runOnClient(client->FpvController.exit(true));
             context.waitFor(client->!FpvController.isActive() && client.getCameraEntity()==client.player);
             serverContext.waitFor(server->!DroneSessions.isControlling(server.getPlayerList().getPlayers().getFirst()));
+            context.waitFor(client->ExplosionEffects.activeBursts()==0&&ExplosionEffects.liveParticles()==0,400);
+            context.runOnClient(client->{
+                CrashEffectsProbe.captureClient=false;
+                var prefs=FpvController.settings();prefs.smokeSeconds=1;prefs.explosionQuality=2;prefs.debrisDensity=2;
+                var event=new ExplosionEffectPayload(UUID.randomUUID(),client.player.position().add(0,1,1),41,true,false);
+                ExplosionEffects.receive(event);ExplosionEffects.receive(event);
+                if(ExplosionEffects.activeBursts()!=1)throw new AssertionError("Duplicate event started a second timeline");
+                prefs.cameraShake=0;if(ExplosionEffects.shake()!=0)throw new AssertionError("Shake toggle not applied");
+                prefs.cameraShake=1;if(ExplosionEffects.shake()<=0)throw new AssertionError("Nearby explosion produces no shake");
+                for(int i=0;i<20;i++)ExplosionEffects.receive(new ExplosionEffectPayload(UUID.randomUUID(),event.position(),i,true,false));
+                if(ExplosionEffects.activeBursts()>ExplosionEffects.MAX_BURSTS)throw new AssertionError("Burst cap exceeded");
+            });
+            context.waitTicks(8);
+            context.runOnClient(client->{if(ExplosionEffects.liveParticles()>ExplosionEffects.MAX_PARTICLES)throw new AssertionError("Particle cap exceeded");});
+            context.waitFor(client->ExplosionEffects.activeBursts()==0&&ExplosionEffects.liveParticles()==0,400);
+            context.runOnClient(client->{
+                var prefs=FpvController.settings();prefs.smokeSeconds=6;prefs.explosionQuality=1;prefs.debrisDensity=1;prefs.cameraShake=.35;
+                ExplosionEffects.clear();if(ExplosionEffects.liveParticles()!=0)throw new AssertionError("World cleanup retained owned particles");
+            });
+            ShahedMod.LOGGER.info("Cinematic lifecycle: deduplication, shake, burst/particle budgets and natural expiry passed");
         } finally {
             serverContext.runOnServer(server->{if(savedPolicy.get()!=null) DroneConfig.update(savedPolicy.get());});
             CrashEffectsProbe.captureClient=false;
             CrashEffectsProbe.CLIENT_PACKETS.clear();
+            CrashEffectsProbe.CLIENT_EFFECTS.clear();CrashEffectsProbe.CLIENT_SOUNDS.clear();
             context.runOnClient(client->{FpvController.settings().nightVision=false;FpvController.exit(false);});
         }
     }

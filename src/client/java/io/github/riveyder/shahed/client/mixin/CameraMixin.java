@@ -40,9 +40,10 @@ abstract class CameraMixin {
             setRotation(io.github.riveyder.shahed.client.ReplayController.cameraYaw(partialTick),
                     io.github.riveyder.shahed.client.ReplayController.cameraPitch(partialTick));
             setPosition(io.github.riveyder.shahed.client.ReplayController.cameraPosition(partialTick));
+            shahed$shake();
             return;
         }
-        if (!(entity instanceof DroneEntity drone) || !FpvController.isCameraDrone(entity)) return;
+        if (!(entity instanceof DroneEntity drone) || !FpvController.isCameraDrone(entity)) {shahed$shake();return;}
         FpvController.CameraPose pose = FpvController.cameraPose(partialTick);
         setRotation(pose.yaw(), pose.pitch());
         if(FpvController.settings().cameraEffects) rotation.rotateZ(pose.roll() * Mth.DEG_TO_RAD);
@@ -62,5 +63,14 @@ abstract class CameraMixin {
         setPosition(new Vec3(Mth.lerp(partialTick, drone.xo, drone.getX()) + offset.x(),
                 Mth.lerp(partialTick, drone.yo, drone.getY()) + offset.y(),
                 Mth.lerp(partialTick, drone.zo, drone.getZ()) + offset.z()));
+        shahed$shake();
+    }
+    private void shahed$shake() {
+        float strength=io.github.riveyder.shahed.client.ExplosionEffects.shake();
+        if(strength<=0)return;
+        double time=System.nanoTime()/1e9;
+        rotation.rotateXYZ((float)Math.sin(time*71)*strength*.025F,0,(float)Math.sin(time*53)*strength*.02F);
+        forwards.set(0,0,-1).rotate(rotation);up.set(0,1,0).rotate(rotation);left.set(-1,0,0).rotate(rotation);
+        matrixPropertiesDirty|=3;
     }
 }

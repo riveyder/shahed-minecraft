@@ -14,6 +14,8 @@ import net.minecraft.world.phys.Vec3;
 public final class DroneSettingsAuthority {
     private record Area(ServerLevel level,BlockPos pos) {}
     private record Challenge(UUID nonce,long revision,long expiry,Area area) {}
+    private record PolicyChallenge(UUID nonce,long revision,long expiry,DroneConfig.Settings candidate) {}
+    private static final Map<UUID,PolicyChallenge> POLICY_CHALLENGES=new HashMap<>();
     private static final Map<UUID,Area> AREAS=new HashMap<>();
     private static final Map<UUID,Challenge> CHALLENGES=new HashMap<>();
     private static final Map<UUID,Long> REQUESTS=new HashMap<>();
@@ -21,8 +23,8 @@ public final class DroneSettingsAuthority {
     public static boolean canEdit(ServerPlayer p) {return p.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);}
     public static void register() {
         ServerPlayConnectionEvents.JOIN.register((h,s,server)->send(h.player,snapshot(h.player,"Настройки сервера получены",SettingsRequestPayload.NONE)));
-        ServerPlayConnectionEvents.DISCONNECT.register((h,s)->{AREAS.remove(h.player.getUUID());CHALLENGES.remove(h.player.getUUID());REQUESTS.remove(h.player.getUUID());});
-        ServerLifecycleEvents.SERVER_STOPPED.register(s->{AREAS.clear();CHALLENGES.clear();REQUESTS.clear();revision=0;});
+        ServerPlayConnectionEvents.DISCONNECT.register((h,s)->{AREAS.remove(h.player.getUUID());CHALLENGES.remove(h.player.getUUID());POLICY_CHALLENGES.remove(h.player.getUUID());REQUESTS.remove(h.player.getUUID());});
+        ServerLifecycleEvents.SERVER_STOPPED.register(s->{AREAS.clear();CHALLENGES.clear();POLICY_CHALLENGES.clear();REQUESTS.clear();revision=0;});
     }
     public static SettingsStatePayload snapshot(ServerPlayer p,String status,UUID nonce) {
         var area=AREAS.get(p.getUUID());
@@ -33,18 +35,28 @@ public final class DroneSettingsAuthority {
     public static SettingsStatePayload handle(ServerPlayer p,SettingsRequestPayload request) {
         long now=p.level().getServer().getTickCount();UUID id=p.getUUID();
         String status="Запрос отклонён";UUID nonce=SettingsRequestPayload.NONE;
-        if(now-REQUESTS.getOrDefault(id,now-10)<10) return snapshot(p,"Слишком часто; повторите через секунду",nonce);
+        boolean confirming=request.action()==4 && CHALLENGES.containsKey(id) && CHALLENGES.get(id).nonce.equals(request.nonce())
+                ||request.action()==6 && POLICY_CHALLENGES.containsKey(id) && POLICY_CHALLENGES.get(id).nonce.equals(request.nonce());
+        if(!confirming && now-REQUESTS.getOrDefault(id,now-10)<10) return snapshot(p,"Слишком часто; повторите через секунду",nonce);
         REQUESTS.put(id,now);
         if(request.action()==0) return snapshot(p,"Настройки сервера получены",nonce);
         if(!canEdit(p)) return snapshot(p,"Требуются права администратора",nonce);
         if(request.revision()!=revision) return snapshot(p,"Настройки изменились; перечитайте и повторите",nonce);
         switch(request.action()) {
             case 1 -> {
-                if(DroneConfig.update(request.settings())) {
-                    revision++;CHALLENGES.clear();status="Настройки сохранены и применены";
-                    for(var player:p.level().getServer().getPlayerList().getPlayers())
-                        if(player!=p) send(player,snapshot(player,"Администратор обновил настройки",nonce));
-                } else status="Ошибка записи: изменения не применены";
+                var candidate=request.settings().sanitized();
+                if(DroneConfig.needsConfirmation(candidate) && !candidate.equals(DroneConfig.get())) {
+                    nonce=UUID.randomUUID();POLICY_CHALLENGES.put(id,new PolicyChallenge(nonce,revision,now+200,candidate));
+                    var current=snapshot(p,"CHAOS: мощность "+candidate.explosionPower()+", до "+candidate.maxBlocks()+" блоков за взрыв. Подтвердите в течение 10 секунд.",nonce);
+                    return new SettingsStatePayload(current.revision(),current.settings(),current.admin(),current.status(),nonce,current.area(),6);
+                }
+                status=apply(p,candidate);
+            }
+            case 6 -> {
+                var challenge=POLICY_CHALLENGES.remove(id);
+                if(challenge!=null && challenge.nonce.equals(request.nonce()) && challenge.revision==revision && now<=challenge.expiry)
+                    status=apply(p,challenge.candidate);
+                else status="Подтверждение CHAOS недействительно или истекло";
             }
             case 2 -> {
                 var area=new Area(p.level(),p.blockPosition().immutable());
@@ -73,6 +85,13 @@ public final class DroneSettingsAuthority {
     private static boolean permitted(ServerPlayer p,Area a) {
         return p.level()==a.level && a.level.hasChunkAt(a.pos) && a.level.mayInteract(p,a.pos)
                 && DroneExplosionProtection.ALLOW.invoker().allow(a.level,p,a.pos);
+    }
+    private static String apply(ServerPlayer p,DroneConfig.Settings candidate) {
+        if(!DroneConfig.update(candidate)) return "Ошибка записи: изменения не применены";
+        revision++;CHALLENGES.clear();POLICY_CHALLENGES.clear();
+        for(var player:p.level().getServer().getPlayerList().getPlayers())
+            if(player!=p) send(player,snapshot(player,"Администратор обновил настройки",SettingsRequestPayload.NONE));
+        return "Настройки сохранены и применены";
     }
     private static void send(ServerPlayer p,SettingsStatePayload state) {
         if(p.connection!=null && ServerPlayNetworking.canSend(p,SettingsStatePayload.TYPE)) ServerPlayNetworking.send(p,state);

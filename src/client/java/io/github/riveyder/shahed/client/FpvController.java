@@ -264,6 +264,7 @@ public final class FpvController {
     public static void beginReturnFade() { returnFadeStart=SETTINGS.cameraEffects?System.nanoTime():0; }
 
     private static void extractHud(GuiGraphicsExtractor graphics, DeltaTracker delta) {
+        ExplosionEffects.flash(graphics);
         if(returnFadeStart!=0) {
             float remaining=1-(System.nanoTime()-returnFadeStart)/450_000_000F;
             if(remaining<=0) returnFadeStart=0;

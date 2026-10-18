@@ -10,6 +10,7 @@ public final class DroneNetworking {
     }
 
     public static void register() {
+        PayloadTypeRegistry.clientboundPlay().register(ExplosionEffectPayload.TYPE,ExplosionEffectPayload.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(SettingsRequestPayload.TYPE,SettingsRequestPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(SettingsStatePayload.TYPE,SettingsStatePayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(SettingsRequestPayload.TYPE,

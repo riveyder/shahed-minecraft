@@ -47,9 +47,11 @@ public final class DroneAudio {
         private final DroneEntity drone;
         private final boolean wind;
         private boolean powered;
+        private double previousDistance=Double.NaN;
         Loop(DroneEntity drone,boolean wind) {
             super(wind?ModSounds.WIND:ModSounds.ENGINE,SoundSource.NEUTRAL,RandomSource.create());
             this.drone=drone; this.wind=wind;
+            powered=drone.getThrottle()>.03F;
             looping=true; delay=0; volume=0;
             relative=wind; attenuation=wind?SoundInstance.Attenuation.NONE:SoundInstance.Attenuation.LINEAR;
             x=drone.getX(); y=drone.getY(); z=drone.getZ();
@@ -62,14 +64,20 @@ public final class DroneAudio {
             float rpm=drone.getThrottle();
             if(!wind) {
                 x=drone.getX(); y=drone.getY(); z=drone.getZ();
-                boolean now=rpm>.02F;
+                boolean now=powered?rpm>.015F:rpm>.04F;
                 if(now!=powered) {
                     client.level.playLocalSound(x,y,z,now?ModSounds.STARTUP:ModSounds.SHUTDOWN,
                             SoundSource.NEUTRAL,(float)settings.engineVolume,1,false);
                     powered=now;
                 }
-                volume+=(rpm*(float)settings.engineVolume-volume)*.2F;
-                pitch=.65F+rpm*1.1F;
+                float gain=rpm>.005F?(.08F+.92F*(float)Math.sqrt(rpm))*(float)settings.engineVolume:0;
+                volume+=(gain-volume)*.15F;
+                double distance=client.gameRenderer.mainCamera().position().distanceTo(drone.position());
+                // Radial motion gives a restrained flyby without relying on unavailable OpenAL source velocities.
+                double radial=Double.isFinite(previousDistance)?Math.clamp((previousDistance-distance)*20,-40,40):0;
+                previousDistance=distance;
+                float desired=(.72F+rpm*.8F)*(float)(1+radial*.003);
+                pitch+=(desired-pitch)*.12F;
             } else {
                 x=y=z=0;
                 float target=FpvController.isCameraDrone(drone)

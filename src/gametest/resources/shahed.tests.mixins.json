@@ -2,7 +2,7 @@
   "required": true,
   "package": "io.github.riveyder.shahed.test.mixin",
   "compatibilityLevel": "JAVA_25",
-  "mixins": ["CrashServerEffectsMixin", "CrashSessionMixin", "CrashExplosionMixin"],
-  "client": ["CrashClientPacketsMixin"],
+  "mixins": ["CrashServerEffectsMixin", "CrashSessionMixin", "CrashExplosionMixin", "CrashAvEventMixin"],
+  "client": ["CrashClientPacketsMixin", "CrashClientAvMixin", "CrashClientAudioMixin"],
   "injectors": {"defaultRequire": 1}
 }

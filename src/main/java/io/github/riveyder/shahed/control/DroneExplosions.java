@@ -1,21 +1,17 @@
 package io.github.riveyder.shahed.control;
 
 import io.github.riveyder.shahed.entity.DroneEntity;
-import io.github.riveyder.shahed.registry.ModSounds;
+import io.github.riveyder.shahed.network.ExplosionEffectPayload;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import java.util.UUID;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Optional;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.network.protocol.game.ClientboundExplodePacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.util.random.WeightedList;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Explosion;
@@ -34,6 +30,15 @@ public final class DroneExplosions {
         boolean gameplay=permitted && level.getGameRules().get(GameRules.TNT_EXPLODES);
         var accepted=new HashSet<BlockPos>();var decisions=new HashMap<BlockPos,Boolean>();
         var calculator=new ExplosionDamageCalculator() {
+            @Override public Optional<Float> getBlockExplosionResistance(Explosion e,BlockGetter world,BlockPos pos,
+                    BlockState state,net.minecraft.world.level.material.FluidState fluid) {
+                var vanilla=super.getBlockExplosionResistance(e,world,pos,state,fluid);
+                // Fictional gameplay balance, not a physical yield: ordinary terrain absorbs less ray energy.
+                // Preserve fluids, unbreakable/high-resistance blocks and all subsequent protection vetoes.
+                if(gameplay&&policy.destroyBlocks()&&fluid.isEmpty()&&state.getDestroySpeed(world,pos)>=0)
+                    return vanilla.map(r->r<1200?r*.20F:r);
+                return vanilla;
+            }
             private boolean allowTarget(Entity target) {
                 return gameplay&&policy.entityDamage()&&policy.damageScale()>0
                         && (!(target instanceof ServerPlayer) || target==owner || level.getGameRules().get(GameRules.PVP))
@@ -66,16 +71,16 @@ public final class DroneExplosions {
         for(var player:level.players()) {
             if(player.connection==null) continue;
             if(explosion.getHitPlayers().containsKey(player)) player.connection.send(new ClientboundSetEntityMotionPacket(player));
-            if(policy.particles() && player.distanceToSqr(position)<4096)
-                player.connection.send(new ClientboundExplodePacket(position,policy.explosionPower(),blocks,Optional.empty(),
-                        ParticleTypes.EXPLOSION,Holder.direct(SoundEvents.EMPTY),WeightedList.of()));
         }
-        if(policy.particles()) {
-            level.sendParticles(ParticleTypes.EXPLOSION_EMITTER,position.x,position.y,position.z,1,0,0,0,0);
-            level.sendParticles(ParticleTypes.LARGE_SMOKE,position.x,position.y,position.z,20,.7,.4,.7,.06);
-        }
-        if(policy.sound()) level.playSound(null,position.x,position.y,position.z,ModSounds.BLAST,SoundSource.NEUTRAL,1.5F,1);
+        emitEffects(level,new ExplosionEffectPayload(UUID.randomUUID(),position,level.getRandom().nextLong(),policy.particles(),policy.sound()));
         return blocks;
+    }
+    public static void emitEffects(ServerLevel level,ExplosionEffectPayload event) {
+        if(!event.valid() || !event.particles()&&!event.sound()) return;
+        // Dimension-local broadcast also reaches remote FPV cameras. Clients cull by camera distance.
+        // One small reliable packet replaces dozens of particle/sound packets; no server debris entities.
+        for(var player:level.players()) if(player.connection!=null && ServerPlayNetworking.canSend(player,ExplosionEffectPayload.TYPE))
+            ServerPlayNetworking.send(player,event);
     }
     private DroneExplosions() { }
 }

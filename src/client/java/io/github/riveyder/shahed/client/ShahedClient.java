@@ -17,5 +17,6 @@ public final class ShahedClient implements ClientModInitializer {
         DroneAudio.initialize();
         ReplayController.initialize();
         ServerSettingsClient.initialize();
+        ExplosionEffects.initialize();
     }
 }

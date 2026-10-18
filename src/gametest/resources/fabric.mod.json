@@ -13,6 +13,7 @@
       "io.github.riveyder.shahed.test.RemoteFpvGameTests",
       "io.github.riveyder.shahed.test.DestructionGameTests",
       "io.github.riveyder.shahed.test.ExplosionPolicyGameTests",
+      "io.github.riveyder.shahed.test.CinematicExplosionGameTests",
       "io.github.riveyder.shahed.test.SettingsGameTests",
       "io.github.riveyder.shahed.test.ReplayGameTests",
       "io.github.riveyder.shahed.test.ExtrasGameTests"

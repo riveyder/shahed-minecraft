@@ -20,6 +20,7 @@ public final class ShahedMod implements ModInitializer {
         io.github.riveyder.shahed.control.DroneConfig.load();
         ModEntities.initialize();
         io.github.riveyder.shahed.registry.ModSounds.initialize();
+        io.github.riveyder.shahed.registry.ModParticles.initialize();
         ModItems.initialize();
         DroneNetworking.register();
         DroneSessions.register();

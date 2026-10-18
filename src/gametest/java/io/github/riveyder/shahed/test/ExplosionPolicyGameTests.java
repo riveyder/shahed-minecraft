@@ -26,7 +26,7 @@ public final class ExplosionPolicyGameTests {
                 int missing=0;for(int x=0;x<7;x++) for(int z=0;z<7;z++)
                     if(h.getLevel().getBlockState(h.absolutePos(new BlockPos(x,90,z))).isAir()) missing++;
                 h.assertTrue(enabled?missing>0&&missing<=5:missing==0,"Actual broken blocks must follow toggle and hard limit: "+missing);
-                h.assertTrue(effects.explosions==1&&effects.blastSounds==1&&effects.smokeParticles>0,"Visuals must not depend on terrain toggle");
+                h.assertTrue(effects.explosions==1&&effects.effects.size()==1&&effects.effects.getFirst().particles()&&effects.effects.getFirst().sound(),"AV event must not depend on terrain toggle");
             }
         }
         h.succeed();
@@ -59,6 +59,7 @@ public final class ExplosionPolicyGameTests {
                 DroneExplosions.explode(h.getLevel(),null,null,target.position().add(1,0,0),new DroneConfig.Settings(false,8,false,1,false,false,0));
                 h.assertTrue(target.getHealth()==health&&target.getDeltaMovement().lengthSqr()==0,"Damage toggle must disable damage and knockback");
                 h.assertTrue(effects.blastSounds==0&&effects.smokeParticles==0&&effects.explosionParticles==0,"Effects must obey independent toggles");
+                h.assertTrue(effects.effects.isEmpty(),"Disabled AV must not emit a cinematic event");
             }
             DroneExplosions.explode(h.getLevel(),null,null,target.position().add(1,0,0),new DroneConfig.Settings(false,8,true,1,false,false,0));
             h.assertTrue(target.getHealth()<health,"Enabled vanilla entity damage must apply");h.succeed();

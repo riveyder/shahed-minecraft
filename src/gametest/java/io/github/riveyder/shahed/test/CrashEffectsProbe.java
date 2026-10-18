@@ -16,6 +16,9 @@ public final class CrashEffectsProbe implements AutoCloseable {
     public int blastSounds;
     public Vec3 blastPosition;
     public final List<SessionPayload> sessions = new ArrayList<>();
+    public final List<io.github.riveyder.shahed.network.ExplosionEffectPayload> effects=new ArrayList<>();
+    public static final List<io.github.riveyder.shahed.network.ExplosionEffectPayload> CLIENT_EFFECTS=new CopyOnWriteArrayList<>();
+    public static final List<String> CLIENT_SOUNDS=new CopyOnWriteArrayList<>();
     public static volatile boolean captureClient;
     public static final List<Packet<?>> CLIENT_PACKETS = new CopyOnWriteArrayList<>();
 

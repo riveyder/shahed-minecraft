@@ -38,8 +38,10 @@ public final class FpvSettingsScreen extends Screen {
         adopt(p);rebuildWidgets();
         if(!p.nonce().equals(SettingsRequestPayload.NONE)) minecraft.gui.setScreen(new ConfirmScreen(confirmed->{
             minecraft.gui.setScreen(this);
-            if(confirmed) ServerSettingsClient.request(4,policy(),p.nonce());
-        },Component.literal("Выполнить TEST EXPLOSION?"),Component.literal("Точка: "+area+". Мощность "+p.settings().explosionPower()
+            if(confirmed) ServerSettingsClient.request(p.confirmationAction(),policy(),p.nonce());
+        },Component.literal(p.confirmationAction()==6?"Применить разрушительный режим?":"Выполнить TEST EXPLOSION?"),Component.literal(p.confirmationAction()==6
+                ?p.status()+" Последующие аварии будут разрушать местность."
+                :"Точка: "+area+". Мощность "+p.settings().explosionPower()
                 +"; блоки: "+(p.settings().destroyBlocks()?"разрушение до "+p.settings().maxBlocks():"сохранить")
                 +"; урон: "+(p.settings().entityDamage()?"включён":"выключен")+". Отойдите от точки. Действие необратимо.")));
     }
@@ -58,6 +60,12 @@ public final class FpvSettingsScreen extends Screen {
                     dirty=true;rebuildWidgets();},admin);}
                 action("Назначить точку теста здесь",()->send(2),admin);
                 action("TEST EXPLOSION — подтверждение…",()->send(3),admin&&!dirty);
+                action("Качество эффектов: "+new String[]{"Низкое","Среднее","Высокое"}[settings.explosionQuality],()->{
+                    settings.explosionQuality=(settings.explosionQuality+1)%3;rebuildWidgets();},true);
+                slider("Масштаб эффектов",settings.explosionVfxScale,.5,2,false,v->settings.explosionVfxScale=v,true);
+                slider("Длительность дыма, с",settings.smokeSeconds,1,12,false,v->settings.smokeSeconds=v,true);
+                slider("Плотность обломков",settings.debrisDensity,0,2,false,v->settings.debrisDensity=v,true);
+                slider("Тряска камеры",settings.cameraShake,0,1,false,v->settings.cameraShake=v,true);
             }
             case 1 -> {
                 slider("Чувствительность мыши",settings.sensitivity,.1,3,false,v->settings.sensitivity=v,true);
@@ -78,6 +86,7 @@ public final class FpvSettingsScreen extends Screen {
                 slider("Ветер",settings.windVolume,0,1,false,v->settings.windVolume=v,true);
                 slider("Интерфейс SHAHED",settings.interfaceVolume,0,1,false,v->settings.interfaceVolume=v,true);
                 slider("Взрыв",settings.explosionVolume,0,1,false,v->settings.explosionVolume=v,true);
+                toggle("Эхо взрыва",()->settings.explosionEcho,v->settings.explosionEcho=v,true);
             }
             case 4 -> {
                 toggle("Запрос повтора",()->settings.replayEnabled,v->settings.replayEnabled=v,true);

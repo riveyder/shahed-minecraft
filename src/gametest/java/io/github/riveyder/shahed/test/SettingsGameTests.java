@@ -14,6 +14,26 @@ import net.minecraft.server.permissions.PermissionSet;
 import net.minecraft.core.BlockPos;
 
 public final class SettingsGameTests {
+    @GameTest
+    public void chaosRequiresExplicitBoundConfirmationEvenForAnAdministrator(GameTestHelper h) {
+        var original=DroneConfig.get();var admin=new Admin(h);
+        try {
+            var candidate=original.preset(2);
+            var pending=DroneSettingsAuthority.handle(admin,request(admin,1,candidate,SettingsRequestPayload.NONE));
+            h.assertTrue(pending.confirmationAction()==6&&!pending.nonce().equals(SettingsRequestPayload.NONE),"CHAOS must issue a dedicated confirmation");
+            h.assertTrue(DroneConfig.get().equals(original),"Preparing CHAOS must not apply it");
+            admin.allowed=false;
+            h.assertTrue(DroneSettingsAuthority.handle(admin,request(admin,6,candidate,pending.nonce())).status().contains("администратора"),"Recheck authority at confirmation");
+            admin.allowed=true;
+            // The candidate is server-bound: even another policy in the confirm packet cannot replace it.
+            var confirmed=DroneSettingsAuthority.handle(admin,request(admin,6,original.preset(0),pending.nonce()));
+            h.assertTrue(confirmed.settings().equals(candidate)&&DroneConfig.get().equals(candidate),"Exact confirmed policy must become live");
+            var oldRevision=confirmed.revision();
+            var repeat=DroneSettingsAuthority.handle(admin,request(admin,6,original,pending.nonce()));
+            h.assertTrue(repeat.revision()==oldRevision,"Consumed token cannot apply policy twice");
+        } finally {h.assertTrue(DroneConfig.update(original),"Restore policy");}
+        h.succeed();
+    }
     private static final class Admin extends ServerPlayer {
         boolean allowed=true;
         Admin(GameTestHelper h) {super(h.getLevel().getServer(),h.getLevel(),new GameProfile(UUID.randomUUID(),"PolicyTest"),ClientInformation.createDefault());}

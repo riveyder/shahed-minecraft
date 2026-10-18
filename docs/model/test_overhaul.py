@@ -17,7 +17,7 @@ class ModelTests(unittest.TestCase):
     def test_sound_and_item_resources_resolve(self):
         assets=ROOT/'src/main/resources/assets/shahed'
         sounds=json.loads((assets/'sounds.json').read_text())
-        self.assertEqual(set(sounds),{'engine','startup','shutdown','wind','impact','blast'})
+        self.assertEqual(set(sounds),{'engine','startup','shutdown','wind','impact','blast','blast_echo'})
         for name,event in sounds.items():
             for sound in event['sounds']:
                 data=(assets/'sounds'/(sound['name'].split(':')[1]+'.ogg')).read_bytes()

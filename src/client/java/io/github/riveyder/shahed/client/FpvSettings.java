@@ -29,6 +29,12 @@ public final class FpvSettings {
     public double cameraFov=90;
     public double interfaceVolume=.7;
     public double explosionVolume=1;
+    public double explosionVfxScale=1;
+    public double smokeSeconds=6;
+    public double debrisDensity=1;
+    public double cameraShake=.35;
+    public int explosionQuality=1;
+    public boolean explosionEcho=true;
     public int hudArgb() { return switch(hudColor) {case 1 -> 0xFFF0F5F3;case 2 -> 0xFFFF7474;default -> 0xFF9DFFC0;}; }
     public double engineVolume = 0.7;
     public double windVolume = 0.35;
@@ -61,6 +67,11 @@ public final class FpvSettings {
     }
 
     private void sanitize() {
+        explosionVfxScale=Double.isFinite(explosionVfxScale)?Math.clamp(explosionVfxScale,.5,2):1;
+        smokeSeconds=Double.isFinite(smokeSeconds)?Math.clamp(smokeSeconds,1,12):6;
+        debrisDensity=Double.isFinite(debrisDensity)?Math.clamp(debrisDensity,0,2):1;
+        cameraShake=Double.isFinite(cameraShake)?Math.clamp(cameraShake,0,1):.35;
+        explosionQuality=Math.clamp(explosionQuality,0,2);
         hudColor=Math.clamp(hudColor,0,2);
         replayCamera=Math.clamp(replayCamera,0,2);
         cameraFov=Double.isFinite(cameraFov)?Math.clamp(cameraFov,50,110):90;

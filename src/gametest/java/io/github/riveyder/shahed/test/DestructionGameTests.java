@@ -92,9 +92,11 @@ public final class DestructionGameTests {
             helper.assertTrue(drone.isDestroyed() && drone.isRemoved(),"Collision must remove drone: position="
                     +drone.position()+", velocity="+drone.getDeltaMovement()+", bounds="+drone.getBoundingBox()+", wall="+wall);
             helper.assertTrue(effects.explosions==1,"Actual vanilla explosion must run exactly once");
-            helper.assertTrue(effects.explosionParticles>=1 && effects.smokeParticles>=20 && effects.blastSounds==1,
-                    "Server must emit visible particles, smoke and audible blast even with destroyBlocks=false");
-            helper.assertTrue(Math.abs(effects.blastPosition.x-(wall.getX()-.01))<.001,
+            helper.assertTrue(effects.effects.size()==1&&effects.effects.getFirst().particles()&&effects.effects.getFirst().sound(),
+                    "Server must emit one AV event even with destroyBlocks=false");
+            helper.assertTrue(effects.explosionParticles==0&&effects.smokeParticles==0&&effects.blastSounds==0,
+                    "Cinematic event must replace legacy duplicate particle/sound emission");
+            helper.assertTrue(Math.abs(effects.effects.getFirst().position().x-(wall.getX()-.01))<.001,
                     "Blast must originate at wall contact, not at the centre of the wide drone");
             helper.assertBlockPresent(Blocks.GLASS,7,80,3);
             helper.assertTrue(effects.sessions.stream().filter(p->!p.active()
@@ -110,7 +112,7 @@ public final class DestructionGameTests {
             helper.assertFalse(drone.destroy(),"Duplicate destruction must be rejected");
             drone.hurtServer(helper.getLevel(),drone.damageSources().generic(),100);
             drone.tick();
-            helper.assertTrue(effects.explosions==1 && effects.blastSounds==1,"Replay and late damage must not explode again");
+            helper.assertTrue(effects.explosions==1 && effects.effects.size()==1,"Replay and late damage must not explode again");
             helper.succeed();
         } finally { DroneReplays.stop(pilot,false);DroneSessions.end(pilot,"cleanup");drone.discard(); }
     }
@@ -164,7 +166,7 @@ public final class DestructionGameTests {
                 drone.setDeltaMovement(training?new Vec3(0,-.04,0):new Vec3(.8,-.04,0));
                 drone.tick();
                 helper.assertFalse(drone.isRemoved(),"Soft normal contact must survive even with fast tangential motion");
-                helper.assertTrue(effects.explosions==0 && effects.blastSounds==0,"Soft contact must not emit a blast");
+                helper.assertTrue(effects.explosions==0 && effects.effects.isEmpty(),"Soft contact must not emit a blast");
             } finally { drone.discard(); }
         }
         helper.succeed();

@@ -12,6 +12,7 @@ public final class ModSounds {
     public static final SoundEvent WIND = sound("wind");
     public static final SoundEvent IMPACT = sound("impact");
     public static final SoundEvent BLAST = sound("blast");
+    public static final SoundEvent BLAST_ECHO = sound("blast_echo");
     private static SoundEvent sound(String name) {
         var id=ShahedMod.id(name);
         return Registry.register(BuiltInRegistries.SOUND_EVENT,id,SoundEvent.createVariableRangeEvent(id));

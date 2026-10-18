@@ -14,7 +14,7 @@ import net.fabricmc.loader.api.FabricLoader;
 public final class DroneConfig {
     private static final Gson GSON=new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE=FabricLoader.getInstance().getConfigDir().resolve("shahed-server.json");
-    public static final Settings DEFAULTS = new Settings(false,8,true,.25F,true,true,256);
+    public static final Settings DEFAULTS = new Settings(false,8,false,0,true,true,256);
     private static Settings settings=DEFAULTS;
     public record Settings(boolean destroyBlocks,float explosionPower,boolean entityDamage,float damageScale,
                            boolean particles,boolean sound,int maxBlocks,boolean stabilization,
@@ -30,14 +30,17 @@ public final class DroneConfig {
                     Math.clamp(activeLimit,1,64),spectators,Math.clamp(telemetryInterval,1,20));
         }
         public Settings preset(int preset) {var explosion=switch(preset) {
-            case 1 -> new Settings(true,6,true,1,true,true,256);
-            case 2 -> new Settings(true,12,true,1,true,true,1024);
+            case 1 -> new Settings(true,6,true,1,true,true,384);
+            case 2 -> new Settings(true,12,true,1,true,true,3072);
             default -> DEFAULTS;
         };return new Settings(explosion.destroyBlocks,explosion.explosionPower,explosion.entityDamage,
                 explosion.damageScale,explosion.particles,explosion.sound,explosion.maxBlocks,
                 stabilization,dragMultiplier,activeLimit,spectators,telemetryInterval);}
     }
     public static Settings get() { return settings; }
+    public static boolean needsConfirmation(Settings s) {
+        s=s.sanitized();return s.destroyBlocks() && (s.explosionPower()>8 || s.maxBlocks()>512);
+    }
     public static void load() {
         settings=DEFAULTS;
         try {
