@@ -22,6 +22,7 @@ import net.minecraft.world.level.Level;
 public final class ControllerItem extends Item {
     private static final String DRONE_KEY = "ShahedDrone";
     private static final String OWNER_KEY = "ShahedOwner";
+    private static final String DESTROYED_KEY = "ShahedDestroyed";
 
     public ControllerItem(Properties properties) {
         super(properties);
@@ -37,6 +38,7 @@ public final class ControllerItem extends Item {
                 if (DroneSessions.isControlling(serverPlayer)) {
                     return InteractionResult.FAIL;
                 }
+                if(player.isShiftKeyDown()) {clearBinding(stack);message(serverPlayer,Component.translatable("message.shahed.controller.cleared"));return InteractionResult.SUCCESS;}
                 return bind(serverPlayer, drone, stack) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
             }
             return InteractionResult.SUCCESS;
@@ -44,17 +46,35 @@ public final class ControllerItem extends Item {
     }
 
     public static boolean bind(ServerPlayer player, DroneEntity drone, ItemStack stack) {
-        if (!stack.is(ModItems.CONTROLLER) || drone.isRemoved()
+        if (!stack.is(ModItems.CONTROLLER) || drone.isRemoved() || drone.isDestroyed()
+                || !player.isAlive() || player.isSpectator() || player.level()!=drone.level() || DroneSessions.isControlling(player)
                 || !drone.getOwnerUuid().filter(player.getUUID()::equals).isPresent()) {
             message(player, Component.translatable("message.shahed.controller.not_owner"));
             return false;
         }
         CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+            tag.remove(DESTROYED_KEY);
             tag.putString(DRONE_KEY, drone.getUUID().toString());
             tag.putString(OWNER_KEY, player.getUUID().toString());
         });
         message(player, Component.translatable("message.shahed.controller.bound", shortId(drone.getUUID())));
         return true;
+    }
+
+    public static void clearBinding(ItemStack stack) {
+        CustomData.update(DataComponents.CUSTOM_DATA,stack,tag->{tag.remove(DRONE_KEY);tag.remove(OWNER_KEY);tag.remove(DESTROYED_KEY);});
+    }
+
+    /** Only a confirmed server destruction marks inventory controllers; unloaded entities are never guessed dead. */
+    public static void markDestroyed(ServerPlayer player,UUID droneId) {
+        var inventory=player.getInventory();
+        for(int i=0;i<inventory.getContainerSize();i++) markDestroyed(inventory.getItem(i),droneId);
+        // Equipment storage may be separate from the main inventory in newer Minecraft versions.
+        markDestroyed(player.getOffhandItem(),droneId);
+    }
+    private static void markDestroyed(ItemStack stack,UUID droneId) {
+        if(getBoundDrone(stack).filter(droneId::equals).isPresent())
+            CustomData.update(DataComponents.CUSTOM_DATA,stack,tag->tag.putBoolean(DESTROYED_KEY,true));
     }
 
     public static Optional<UUID> getBoundDrone(ItemStack stack) {
@@ -89,6 +109,15 @@ public final class ControllerItem extends Item {
             return InteractionResult.SUCCESS;
         }
         ItemStack stack = player.getItemInHand(hand);
+        if(player.isShiftKeyDown()) {
+            clearBinding(stack);message(serverPlayer,Component.translatable("message.shahed.controller.cleared"));return InteractionResult.SUCCESS;
+        }
+        if(getBoundOwner(stack).filter(id->!id.equals(player.getUUID())).isPresent()) {
+            message(serverPlayer,Component.translatable("message.shahed.controller.wrong_owner"));return InteractionResult.FAIL;
+        }
+        if(stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag().getBoolean(DESTROYED_KEY).orElse(false)) {
+            message(serverPlayer,Component.translatable("message.shahed.controller.destroyed"));return InteractionResult.FAIL;
+        }
         Optional<UUID> droneUuid = getBoundDrone(stack);
         if (droneUuid.isEmpty()) {
             message(serverPlayer, Component.translatable("message.shahed.controller.not_bound"));

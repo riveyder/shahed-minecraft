@@ -8,4 +8,5 @@ public final class DroneRenderState extends EntityRenderState {
     public float yaw;
     public float pitch;
     public float roll;
+    public float propellerAngle;
 }

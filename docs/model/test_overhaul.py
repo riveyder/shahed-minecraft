@@ -11,7 +11,9 @@ class ModelTests(unittest.TestCase):
         model=json.loads((ROOT/'assets-work/Shahed_Sheep_Overhaul.bbmodel').read_text(encoding='utf-8'))
         embedded=base64.b64decode(model['textures'][0]['source'].split(',')[1])
         self.assertEqual(embedded,(ROOT/'src/main/resources/assets/shahed/textures/entity/drone.png').read_bytes())
-        self.assertEqual(set(model['outliner']),{e['uuid'] for e in model['elements']})
+        leaves=[child for node in model['outliner'] for child in (node['children'] if isinstance(node,dict) else [node])]
+        self.assertEqual(set(leaves),{e['uuid'] for e in model['elements']})
+        self.assertEqual(len(leaves),len(model['elements']))
         self.assertEqual(model['resolution'],{'width':512,'height':512})
 
     def test_sound_and_item_resources_resolve(self):
@@ -40,7 +42,7 @@ class ModelTests(unittest.TestCase):
                 self.assertAlmostEqual(e['to'][axis]-e['from'][axis],
                                        (original['to'][axis]-original['from'][axis])*2.5)
         java=(ROOT/'src/client/java/io/github/riveyder/shahed/client/model/DroneModel.java').read_text()
-        self.assertEqual(java.count('box(root,'),len(by_id))
+        self.assertEqual(java.count('box(root,')+java.count('box(propeller,'),len(by_id))
         for e in model['elements']:
             self.assertGreaterEqual(e['from'][1],0)
             for face in e['faces'].values():

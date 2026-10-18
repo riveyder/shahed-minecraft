@@ -29,11 +29,11 @@ public final class FpvSettingsScreen extends Screen {
     private void adopt(SettingsStatePayload p) {
         var s=p==null?DroneConfig.DEFAULTS:p.settings();
         draft=new double[]{s.destroyBlocks()?1:0,s.explosionPower(),s.entityDamage()?1:0,s.damageScale(),
-                s.particles()?1:0,s.sound()?1:0,s.maxBlocks(),s.stabilization()?1:0,s.dragMultiplier(),s.activeLimit(),s.spectators()?1:0,s.telemetryInterval(),s.realFire()?1:0,s.fireSpread()?1:0,s.effectScale(),s.audioRange()};
+                s.particles()?1:0,s.sound()?1:0,s.maxBlocks(),s.stabilization()?1:0,s.dragMultiplier(),s.activeLimit(),s.spectators()?1:0,s.telemetryInterval(),s.realFire()?1:0,s.fireSpread()?1:0,s.effectScale(),s.audioRange(),s.deploymentEnabled()?1:0,s.deploymentAdminOnly()?1:0};
         if(p!=null) {admin=p.admin();status=p.status();area=p.area();}dirty=false;
     }
     private DroneConfig.Settings policy() {return new DroneConfig.Settings(draft[0]>0,(float)draft[1],draft[2]>0,(float)draft[3],
-            draft[4]>0,draft[5]>0,(int)draft[6],draft[7]>0,(float)draft[8],(int)draft[9],draft[10]>0,(int)draft[11],draft[12]>0,draft[13]>0,(float)draft[14],(int)draft[15]).sanitized();}
+            draft[4]>0,draft[5]>0,(int)draft[6],draft[7]>0,(float)draft[8],(int)draft[9],draft[10]>0,(int)draft[11],draft[12]>0,draft[13]>0,(float)draft[14],(int)draft[15],draft[16]>0,draft[17]>0).sanitized();}
     public void receive(SettingsStatePayload p) {
         adopt(p);rebuildWidgets();
         if(!p.nonce().equals(SettingsRequestPayload.NONE)) minecraft.gui.setScreen(new ConfirmScreen(confirmed->{
@@ -96,6 +96,8 @@ public final class FpvSettingsScreen extends Screen {
                 toggle("Юмор производителя",()->settings.humor,v->settings.humor=v,true);
             }
             case 5 -> {
+                serverToggle("Разрешить размещение дронов",16);
+                serverToggle("Размещение только администраторам",17);
                 serverSlider("Активных пилотов",9,1,64,true);serverToggle("Разрешить наблюдателей",10);
                 serverSlider("Телеметрия: интервал, тики",11,1,20,true);
                 action("Перечитать настройки сервера",ServerSettingsClient::read,true);

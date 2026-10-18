@@ -19,7 +19,14 @@ public final class DroneConfig {
     public record Settings(boolean destroyBlocks,float explosionPower,boolean entityDamage,float damageScale,
                            boolean particles,boolean sound,int maxBlocks,boolean stabilization,
                            float dragMultiplier,int activeLimit,boolean spectators,int telemetryInterval,
-                           boolean realFire,boolean fireSpread,float effectScale,int audioRange) {
+                           boolean realFire,boolean fireSpread,float effectScale,int audioRange,
+                           boolean deploymentEnabled,boolean deploymentAdminOnly) {
+        public Settings(boolean blocks,float power,boolean damage,float scale,boolean particles,boolean sound,int cap,
+                        boolean stabilization,float drag,int active,boolean spectators,int telemetry,
+                        boolean realFire,boolean fireSpread,float effectScale,int audioRange) {
+            this(blocks,power,damage,scale,particles,sound,cap,stabilization,drag,active,spectators,telemetry,
+                    realFire,fireSpread,effectScale,audioRange,true,false);
+        }
         public Settings(boolean blocks,float power,boolean damage,float scale,boolean particles,boolean sound,int cap,
                         boolean stabilization,float drag,int active,boolean spectators,int telemetry) {
             this(blocks,power,damage,scale,particles,sound,cap,stabilization,drag,active,spectators,telemetry,false,false,2.5F,1024);
@@ -34,7 +41,7 @@ public final class DroneConfig {
                     stabilization,Float.isFinite(dragMultiplier)?Math.clamp(dragMultiplier,.5F,2):1,
                     Math.clamp(activeLimit,1,64),spectators,Math.clamp(telemetryInterval,1,20),
                     realFire&&destroyBlocks,fireSpread&&realFire&&destroyBlocks,
-                    Float.isFinite(effectScale)?Math.clamp(effectScale,1,4):2.5F,Math.clamp(audioRange,64,2048));
+                    Float.isFinite(effectScale)?Math.clamp(effectScale,1,4):2.5F,Math.clamp(audioRange,64,2048),deploymentEnabled,deploymentAdminOnly);
         }
         public Settings preset(int preset) {var explosion=switch(preset) {
             case 1 -> DEFAULTS;
@@ -43,7 +50,7 @@ public final class DroneConfig {
         };return new Settings(explosion.destroyBlocks,explosion.explosionPower,explosion.entityDamage,
                 explosion.damageScale,explosion.particles,explosion.sound,explosion.maxBlocks,
                 stabilization,dragMultiplier,activeLimit,spectators,telemetryInterval,
-                preset!=0&&realFire,preset!=0&&fireSpread,preset==2?4:2.5F,audioRange);}
+                preset!=0&&realFire,preset!=0&&fireSpread,preset==2?4:2.5F,audioRange,deploymentEnabled,deploymentAdminOnly);}
     }
     public static Settings get() { return settings; }
     public static boolean needsConfirmation(Settings s) {

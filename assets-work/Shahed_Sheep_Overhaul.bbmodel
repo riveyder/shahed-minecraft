@@ -5339,8 +5339,6 @@
     "1564079f-1a38-4f6d-8b8f-234cc6f757cc",
     "d69b7a28-1dbd-437e-aeb4-f9360d5effc9",
     "6368951f-f24c-4e80-9172-7205729c7a0c",
-    "83449b21-6f3d-474d-87ae-5bfe4ca4685f",
-    "0c1e8495-7fff-4755-b746-c1bff88ceb8d",
     "efe8db37-cf72-4ddc-9f4f-e40b4191a0ef",
     "cc4356a1-a1c5-4c75-aae7-082e5abaa24c",
     "7d8030e2-44da-4bb5-a20a-19cda276e5dd",
@@ -5366,7 +5364,25 @@
     "8b218fa2-0351-5a32-b31b-7cb0e996f6ee",
     "2ed5b4cd-8686-5239-a8b5-a8d505770ac7",
     "c6445e68-2a51-5f81-8e0d-acc05054a6dc",
-    "b4363533-5dfc-53ee-b988-47f44f10d937"
+    "b4363533-5dfc-53ee-b988-47f44f10d937",
+    {
+      "name": "propeller",
+      "uuid": "f8e02178-a13a-5738-a3be-1aae5c7ce9cf",
+      "origin": [
+        0,
+        7.9,
+        33.125
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "children": [
+        "83449b21-6f3d-474d-87ae-5bfe4ca4685f",
+        "0c1e8495-7fff-4755-b746-c1bff88ceb8d"
+      ]
+    }
   ],
   "textures": [
     {

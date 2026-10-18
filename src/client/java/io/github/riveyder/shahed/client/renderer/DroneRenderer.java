@@ -40,6 +40,7 @@ public final class DroneRenderer extends EntityRenderer<DroneEntity, DroneRender
     public void extractRenderState(DroneEntity entity, DroneRenderState state, float tickProgress) {
         super.extractRenderState(entity, state, tickProgress);
         state.tint=entity.getTint();
+        state.propellerAngle=entity.getPropellerAngle(tickProgress);
         state.yaw = entity.getYRot(tickProgress);
         state.pitch = entity.getXRot(tickProgress);
         state.roll = entity.getRoll(tickProgress);

@@ -24,11 +24,12 @@ public final class DroneItem extends Item {
         }
 
         if (!(context.getLevel() instanceof ServerLevel level)) {
-            return player.getAbilities().instabuild ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+            return player.isSpectator()?InteractionResult.FAIL:InteractionResult.SUCCESS;
         }
 
-        if (!player.getAbilities().instabuild) {
-            player.sendOverlayMessage(Component.translatable("commands.shahed.creative_only"));
+        String denial=io.github.riveyder.shahed.control.DroneDeployment.denial(player);
+        if (denial!=null) {
+            player.sendOverlayMessage(Component.translatable(denial));
             return InteractionResult.FAIL;
         }
 
@@ -40,6 +41,8 @@ public final class DroneItem extends Item {
             return InteractionResult.FAIL;
         }
 
+        // Consume only after a successful server spawn. Failed placement never loses the item.
+        if(!player.getAbilities().instabuild)context.getItemInHand().shrink(1);
         player.sendOverlayMessage(Component.translatable("commands.shahed.spawned"));
         return InteractionResult.SUCCESS;
     }

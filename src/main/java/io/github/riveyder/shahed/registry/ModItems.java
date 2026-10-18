@@ -46,7 +46,9 @@ public final class ModItems {
 
     private static Item.Properties equipmentProperties(String name) {
         return new Item.Properties().stacksTo(1).component(DataComponents.LORE,
-                new ItemLore(List.of(Component.translatable("item.shahed." + name + ".hint"))));
+                new ItemLore(name.equals("controller")
+                        ?List.of(Component.translatable("item.shahed.controller.hint"),Component.translatable("item.shahed.controller.hint2"))
+                        :List.of(Component.translatable("item.shahed." + name + ".hint"))));
     }
 
     private static Item register(String path, Function<Item.Properties, Item> factory, Item.Properties properties) {

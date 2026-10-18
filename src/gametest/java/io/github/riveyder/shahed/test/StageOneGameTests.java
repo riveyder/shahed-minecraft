@@ -27,25 +27,20 @@ import net.minecraft.world.phys.Vec3;
 /** Regression checks for registration, placement, persistence and an unpiloted drone's gravity. */
 public final class StageOneGameTests {
     @GameTest
-    public void spawningRequiresCreativeAndPreservesTheCreatorsIdentity(GameTestHelper helper) {
+    public void survivalSpawningPreservesTheCreatorsIdentity(GameTestHelper helper) {
         Vec3 position = Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(3, 2, 3)));
         Player survivalPlayer = helper.makeMockServerPlayer(GameType.SURVIVAL);
-        helper.assertFalse(DroneEntity.spawn(helper.getLevel(), survivalPlayer, position),
-                "Survival players must not create prototype drones");
-        helper.assertEntityNotPresent(ModEntities.DRONE);
-
-        Player creativePlayer = helper.makeMockServerPlayer(GameType.CREATIVE);
-        creativePlayer.setYRot(135.0F);
-        helper.assertTrue(DroneEntity.spawn(helper.getLevel(), creativePlayer, position),
-                "Creative players must be able to create a drone at an unobstructed position");
+        survivalPlayer.setYRot(135.0F);
+        helper.assertTrue(DroneEntity.spawn(helper.getLevel(), survivalPlayer, position),
+                "Survival players must be able to create a drone at an unobstructed position");
 
         DroneEntity drone = helper.findOneEntity(ModEntities.DRONE);
-        helper.assertTrue(drone.getOwnerUuid().filter(creativePlayer.getUUID()::equals).isPresent(),
+        helper.assertTrue(drone.getOwnerUuid().filter(survivalPlayer.getUUID()::equals).isPresent(),
                 "The spawned drone must store its creator UUID");
         helper.assertTrue(Math.abs(drone.getYRot() - 135.0F) < 0.001F,
                 "The spawned drone must face the same direction as its creator");
         helper.assertTrue(drone.position().equals(position), "The drone must spawn at the requested position");
-        helper.assertFalse(DroneEntity.spawn(helper.getLevel(), creativePlayer, position),
+        helper.assertFalse(DroneEntity.spawn(helper.getLevel(), survivalPlayer, position),
                 "A second drone must not overlap the first drone");
         helper.assertEntitiesPresent(ModEntities.DRONE, 1);
         helper.succeed();

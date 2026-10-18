@@ -59,6 +59,8 @@ public final class DroneCommands {
             return 0;
         }
 
+        String denial=io.github.riveyder.shahed.control.DroneDeployment.denial(player);
+        if(denial!=null){source.sendFailure(Component.translatable(denial));return 0;}
         double yaw = Math.toRadians(player.getYRot());
         Vec3 position = player.position().add(-Math.sin(yaw) * 3.5, 0.0, Math.cos(yaw) * 3.5);
         if (!DroneEntity.spawn(source.getLevel(), player, position,training)) {

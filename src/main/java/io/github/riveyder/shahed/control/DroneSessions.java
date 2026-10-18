@@ -74,6 +74,8 @@ public final class DroneSessions {
     public static boolean hasFlightSession(ServerPlayer player) { return PLAYERS.containsKey(player.getUUID()); }
 
     public static void destroyed(DroneEntity drone) {
+        if(drone.level() instanceof ServerLevel level)
+            for(var player:level.getServer().getPlayerList().getPlayers())ControllerItem.markDestroyed(player,drone.getUUID());
         for(Session session:new ArrayList<>(PLAYERS.values())) {
             if(session.drone==drone) {
                 io.github.riveyder.shahed.replay.DroneReplays.capture(session.player,session.id,drone);

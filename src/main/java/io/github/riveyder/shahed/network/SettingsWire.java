@@ -11,9 +11,10 @@ final class SettingsWire {
         b.writeBoolean(s.stabilization());b.writeFloat(s.dragMultiplier());b.writeVarInt(s.activeLimit());
         b.writeBoolean(s.spectators());b.writeVarInt(s.telemetryInterval());
         b.writeBoolean(s.realFire());b.writeBoolean(s.fireSpread());b.writeFloat(s.effectScale());b.writeVarInt(s.audioRange());
+        b.writeBoolean(s.deploymentEnabled());b.writeBoolean(s.deploymentAdminOnly());
     }
     static Settings read(RegistryFriendlyByteBuf b) {return new Settings(b.readBoolean(),b.readFloat(),b.readBoolean(),
             b.readFloat(),b.readBoolean(),b.readBoolean(),b.readVarInt(),b.readBoolean(),b.readFloat(),
-            b.readVarInt(),b.readBoolean(),b.readVarInt(),b.readBoolean(),b.readBoolean(),b.readFloat(),b.readVarInt());}
+            b.readVarInt(),b.readBoolean(),b.readVarInt(),b.readBoolean(),b.readBoolean(),b.readFloat(),b.readVarInt(),b.readBoolean(),b.readBoolean());}
     private SettingsWire() {}
 }

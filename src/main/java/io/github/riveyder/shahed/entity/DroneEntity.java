@@ -47,6 +47,21 @@ public final class DroneEntity extends Entity {
     private float rollVelocity;
     private float throttle;
     private float previousRoll;
+    // Client-only visual state. Tick integration + unwrapped interpolation is independent of FPS.
+    private float propellerAngle,previousPropellerAngle,propellerSpeed;
+    public float getPropellerAngle(float partialTick) {
+        return Mth.lerp(Mth.clamp(partialTick,0,1),previousPropellerAngle,propellerAngle);
+    }
+    private void tickPropeller() {
+        previousPropellerAngle=propellerAngle%(float)(Math.PI*2);
+        float rpm=Mth.clamp(getThrottle(),0,1);
+        float target=rpm>.005F?.3F+rpm*3.1F:0;
+        float response=(float)(1-Math.exp(-.05/(target>propellerSpeed?.35:.65)));
+        float oldSpeed=propellerSpeed;
+        propellerSpeed+=(target-propellerSpeed)*response;
+        if(target==0&&propellerSpeed<.001F)propellerSpeed=0;
+        propellerAngle=previousPropellerAngle+(oldSpeed+propellerSpeed)*.5F;
+    }
     private float health = 10.0F;
     private boolean destroyed;
     private io.github.riveyder.shahed.replay.ReplayImpact replayImpact;
@@ -143,6 +158,7 @@ public final class DroneEntity extends Entity {
         previousRoll = getRoll();
         super.tick();
         if (level().isClientSide()) {
+            tickPropeller();
             interpolation.interpolate();
             return;
         }
@@ -302,9 +318,7 @@ public final class DroneEntity extends Entity {
     public static boolean spawn(ServerLevel level, Player player, Vec3 position) { return spawn(level,player,position,false); }
 
     public static boolean spawn(ServerLevel level, Player player, Vec3 position,boolean training) {
-        if (!player.getAbilities().instabuild) {
-            return false;
-        }
+        if(player.level()!=level||io.github.riveyder.shahed.control.DroneDeployment.denial(player)!=null) return false;
 
         DroneEntity drone = new DroneEntity(ModEntities.DRONE, level);
         drone.setPos(position.x, position.y, position.z);
