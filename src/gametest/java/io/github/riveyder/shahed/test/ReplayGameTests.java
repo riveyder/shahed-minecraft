@@ -15,6 +15,26 @@ import net.minecraft.world.level.block.Blocks;
 
 public final class ReplayGameTests {
     @GameTest
+    public void crashSitePresetTracksImpactChunksBeforePlaybackReachesImpact(GameTestHelper helper) {
+        var pilot=(ServerPlayer)helper.makeMockServerPlayer(GameType.CREATIVE);
+        var drone=helper.spawn(ModEntities.DRONE,3,80,3);
+        var session=UUID.randomUUID();
+        try {
+            drone.setTraining(true);drone.setControlInput(io.github.riveyder.shahed.control.DroneInput.IDLE);
+            drone.tick();drone.setPos(drone.getX()+12,drone.getY(),drone.getZ());drone.destroy();
+            DroneReplays.capture(pilot,session,drone);
+            helper.assertFalse(DroneReplays.request(pilot,new ReplayControlPayload(session,1,3)),"Reject invalid camera preset");
+            helper.assertTrue(DroneReplays.request(pilot,new ReplayControlPayload(session,1,2)),"Crash-site camera must start");
+            helper.assertTrue(DroneReplays.position(pilot).distanceToSqr(drone.replayImpact().position())<.001,
+                    "Server must stream impact chunks immediately for stationary crash-site camera");
+            var buffer=new RegistryFriendlyByteBuf(Unpooled.buffer(),helper.getLevel().registryAccess());
+            try {var payload=new ReplayControlPayload(session,2,2);ReplayControlPayload.CODEC.encode(buffer,payload);
+                helper.assertTrue(payload.equals(ReplayControlPayload.CODEC.decode(buffer)),"Camera preset must survive protocol");}
+            finally {buffer.release();}
+        } finally {DroneReplays.stop(pilot,false);drone.discard();}
+        helper.succeed();
+    }
+    @GameTest
     public void aftermathLastsSixtyTicksAtBothPlaybackSpeeds(GameTestHelper helper) {
         for(int mode:new int[]{1,2}) {
             double impact=199;

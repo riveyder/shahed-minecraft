@@ -28,6 +28,7 @@ public final class ReplayController {
     private static CameraType previousPerspective;
     private static double cursor;
     private static int mode;
+    private static int cameraPreset;
     private static boolean impactShown;
     private static boolean autoPending;
     public static boolean isAftermath() {return isPlaying() && cursor>=recording.frames().size()-1;}
@@ -39,7 +40,7 @@ public final class ReplayController {
             if(recording==null||!recording.sessionId().equals(p.sessionId())) return;
             if(p.mode()==0) { boolean wasPlaying=isPlaying();stop(false);
                 if(wasPlaying && c.client().player!=null && c.client().player.isAlive()) c.client().gui.setScreen(new SignalLostScreen());
-            } else if(p.mode()==1||p.mode()==2) start(p.mode());
+            } else if(p.mode()==1||p.mode()==2) start(p.mode(),p.camera());
         }));
         ClientPlayConnectionEvents.DISCONNECT.register((h,c)->{stop(false);recording=null;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
@@ -82,13 +83,13 @@ public final class ReplayController {
     public static boolean isGhost(Entity entity) {return entity==ghost;}
     public static void request(boolean slow) {
         if(available() && ClientPlayNetworking.canSend(ReplayControlPayload.TYPE))
-            ClientPlayNetworking.send(new ReplayControlPayload(recording.sessionId(),slow?2:1));
+            ClientPlayNetworking.send(new ReplayControlPayload(recording.sessionId(),slow?2:1,FpvController.settings().replayCamera));
     }
-    private static void start(int speed) {
+    private static void start(int speed,int preset) {
         var client=Minecraft.getInstance();
         if(client.level==null||client.player==null||!client.player.isAlive()) return;
         stop(false);
-        level=client.level;mode=speed;cursor=0;impactShown=false;
+        level=client.level;mode=speed;cameraPreset=preset;cursor=0;impactShown=false;
         previousCamera=client.getCameraEntity();previousPerspective=client.options.getCameraType();
         ghost=new DroneEntity(ModEntities.DRONE,level);
         int id=Integer.MIN_VALUE+100;
@@ -112,13 +113,14 @@ public final class ReplayController {
     }
     public static Vec3 cameraPosition(float partial) {
         var f=frame(partial);double after=ReplayTimeline.aftermath(cursor+partial*ReplayTimeline.rate(mode),recording.frames().size(),mode)/60;
-        int preset=FpvController.settings().replayCamera;
-        double angle=f.yaw()+(preset==1?90:preset==2?135:0)+(isAftermath()?after*25:
+        int preset=cameraPreset;
+        double baseYaw=preset==2?recording.frames().getLast().yaw():f.yaw();
+        double angle=baseYaw+(preset==1?90:preset==2?135:0)+(isAftermath()?after*25:
                 FpvController.settings().directorCamera?(cursor+partial)*.7:0);
         double yaw=Math.toRadians(angle),distance=7+Math.min(1,after)*3;
         return cameraTarget(partial).add(Math.sin(yaw)*distance,3+Math.min(1,after)*2,-Math.cos(yaw)*distance);
     }
-    private static Vec3 cameraTarget(float partial) {return isAftermath()?recording.impact().position():frame(partial).position();}
+    private static Vec3 cameraTarget(float partial) {return cameraPreset==2||isAftermath()?recording.impact().position():frame(partial).position();}
     public static float cameraYaw(float partial) {
         Vec3 look=cameraTarget(partial).subtract(cameraPosition(partial));
         return (float)Math.toDegrees(Math.atan2(-look.x,look.z));

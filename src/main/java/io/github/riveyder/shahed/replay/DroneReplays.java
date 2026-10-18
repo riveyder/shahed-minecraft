@@ -65,12 +65,13 @@ public final class DroneReplays {
     }
     public static boolean request(ServerPlayer player,ReplayControlPayload request) {
         var recording=RECORDINGS.get(player.getUUID());
-        if(recording==null||!recording.payload.sessionId().equals(request.sessionId())||request.mode()<0||request.mode()>2) return false;
+        if(recording==null||!recording.payload.sessionId().equals(request.sessionId())||request.mode()<0||request.mode()>2
+                ||request.camera()<0||request.camera()>2) return false;
         if(request.mode()==0) { stop(player,true);return true; }
         if(DroneSessions.hasFlightSession(player)||!player.isAlive()||player.level()!=recording.level
                 ||player.isPassenger()||player.isSleeping()||player.isSpectator()||VIEWERS.containsKey(player.getUUID())) return false;
         if(player.connection!=null && !ServerPlayNetworking.canSend(player,ReplayControlPayload.TYPE)) return false;
-        var viewer=new Viewer(player,recording,request.mode());
+        var viewer=new Viewer(player,recording,request.mode(),request.camera());
         VIEWERS.put(player.getUUID(),viewer);
         player.setDeltaMovement(Vec3.ZERO);
         if(player.connection!=null) {
@@ -84,7 +85,7 @@ public final class DroneReplays {
     public static Vec3 position(ServerPlayer p) {
         var v=VIEWERS.get(p.getUUID());
         if(v==null) return p.position();
-        return v.cursor>=v.recording.payload.frames().size()-1?v.recording.payload.impact().position():
+        return v.camera==2||v.cursor>=v.recording.payload.frames().size()-1?v.recording.payload.impact().position():
                 v.recording.payload.frames().get((int)v.cursor).position();
     }
     public static void stop(ServerPlayer player,boolean notify) {
@@ -109,10 +110,10 @@ public final class DroneReplays {
         Recording(ServerLevel level,ReplayPayload payload) {this.level=level;this.payload=payload;}
     }
     private static final class Viewer {
-        final ServerPlayer player; final Recording recording; final int mode;
+        final ServerPlayer player; final Recording recording; final int mode,camera;
         final Vec3 body; final float health; final DroneChunkTracking chunks; double cursor;
-        Viewer(ServerPlayer p,Recording r,int mode) {
-            player=p;recording=r;this.mode=mode;body=p.position();health=p.getHealth();chunks=new DroneChunkTracking(p.level());
+        Viewer(ServerPlayer p,Recording r,int mode,int camera) {
+            player=p;recording=r;this.mode=mode;this.camera=camera;body=p.position();health=p.getHealth();chunks=new DroneChunkTracking(p.level());
         }
     }
     private DroneReplays() { }
