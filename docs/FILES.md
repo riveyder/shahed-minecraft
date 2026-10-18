@@ -1,3 +1,16 @@
+# Дополнения 0.9.0
+
+- `race/RaceCourse`, `CourseRun` — маршруты, пересечение плоскостей и серверное время.
+- `race/RaceStorage` — атомарное сохранение мира; `RaceAircraft` — граница адаптера аппаратов.
+- `control/DroneRacing`, `command/RaceCommands` — заезды, редактор, рекорды и права.
+- `network/Race*Payload` — ограниченные пакеты запроса, каталога и состояния.
+- `client/RaceClient`, `RaceGateParticle`, `RaceScreen` — кольца, HUD и меню.
+- `client/FpvHelpScreen` — RU/EN-справка с реальными назначениями клавиш.
+- `docs/RACING.md`, `V0.9.0_VERIFICATION.md` — руководство и границы проверки.
+- CI собирает JAR без запуска Minecraft/GameTests, согласно текущему заданию.
+
+Ниже сохранены исторические перечни.
+
 # Дополнения версии 0.3.0
 
 - `assets-work/Shahed_Sheep.bbmodel` — неизменённый пользовательский источник.
