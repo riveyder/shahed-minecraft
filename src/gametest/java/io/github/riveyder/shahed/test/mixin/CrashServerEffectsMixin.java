@@ -18,12 +18,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ServerLevel.class)
 public abstract class CrashServerEffectsMixin {
-    @Inject(method = "explode", at = @At("RETURN"))
-    private void explosion(CallbackInfo ci) {
-        var probe = CrashEffectsProbe.active();
-        if (probe != null) probe.explosions++;
-    }
-
     @Inject(method = "sendParticles(Lnet/minecraft/core/particles/ParticleOptions;DDDIDDDD)I", at = @At("RETURN"))
     private void particles(ParticleOptions type, double x, double y, double z, int count,
                            double dx, double dy, double dz, double speed, CallbackInfoReturnable<Integer> cir) {

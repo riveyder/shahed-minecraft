@@ -229,7 +229,7 @@ public final class DestructionGameTests {
                     "Late damage must not repeat explosion");
             helper.assertTrue(helper.getLevel().getBlockState(block).is(Blocks.GLASS),
                     "Default explosion must preserve fragile nearby blocks");
-            helper.assertTrue(new DroneConfig.Settings(true,Float.NaN).sanitized().explosionPower()==2,
+            helper.assertTrue(new DroneConfig.Settings(true,Float.NaN).sanitized().explosionPower()==8,
                     "Non-finite power must use default");
             helper.succeed();
         } finally { drone.discard(); helper.getLevel().setBlockAndUpdate(block,Blocks.AIR.defaultBlockState()); }

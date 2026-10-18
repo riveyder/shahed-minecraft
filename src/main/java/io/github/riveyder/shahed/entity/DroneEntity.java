@@ -413,22 +413,14 @@ public final class DroneEntity extends Entity {
     private boolean destroy(Vec3 explosionPosition) {
         if (!(level() instanceof ServerLevel server) || destroyed || isRemoved()) return false;
         destroyed=true;
-        replayImpact=new io.github.riveyder.shahed.replay.ReplayImpact(explosionPosition,!isTraining(),!isTraining(),!isTraining(),
-                io.github.riveyder.shahed.control.DroneConfig.get().explosionPower());
+        var policy=io.github.riveyder.shahed.control.DroneConfig.get();
+        replayImpact=new io.github.riveyder.shahed.replay.ReplayImpact(explosionPosition,!isTraining(),policy.particles(),policy.sound(),policy.explosionPower());
         recordFrame();
         io.github.riveyder.shahed.control.DroneSessions.destroyed(this);
         stopControl();
         if(isTraining()) { discard();return true; }
-        var policy=io.github.riveyder.shahed.control.DroneConfig.get();
-        // A full visible burst is independent of vanilla's block-interaction particle choice.
-        server.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,
-                explosionPosition.x,explosionPosition.y,explosionPosition.z,1,0,0,0,0);
-        server.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE,
-                explosionPosition.x,explosionPosition.y,explosionPosition.z,20,0.7,0.4,0.7,0.06);
-        server.playSound(null,explosionPosition.x,explosionPosition.y,explosionPosition.z,io.github.riveyder.shahed.registry.ModSounds.BLAST,
-                net.minecraft.sounds.SoundSource.NEUTRAL,1.5F,1);
-        server.explode(this,explosionPosition.x,explosionPosition.y,explosionPosition.z,policy.explosionPower(),false,
-                policy.destroyBlocks()?Level.ExplosionInteraction.TNT:Level.ExplosionInteraction.NONE);
+        var owner=ownerUuid==null?null:server.getServer().getPlayerList().getPlayer(ownerUuid);
+        io.github.riveyder.shahed.control.DroneExplosions.explode(server,this,owner,explosionPosition,policy);
         discard();
         return true;
     }
