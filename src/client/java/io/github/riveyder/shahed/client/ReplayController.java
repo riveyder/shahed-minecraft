@@ -29,10 +29,11 @@ public final class ReplayController {
     private static double cursor;
     private static int mode;
     private static boolean impactShown;
+    private static boolean autoPending;
     public static boolean isAftermath() {return isPlaying() && cursor>=recording.frames().size()-1;}
     public static void initialize() {
         ClientPlayNetworking.registerGlobalReceiver(ReplayPayload.TYPE,(p,c)->c.client().execute(()->{
-            if(FpvController.acceptsReplay(p.sessionId())) { recording=p;received=System.nanoTime(); }
+            if(FpvController.acceptsReplay(p.sessionId())) { recording=p;received=System.nanoTime();autoPending=true; }
         }));
         ClientPlayNetworking.registerGlobalReceiver(ReplayControlPayload.TYPE,(p,c)->c.client().execute(()->{
             if(recording==null||!recording.sessionId().equals(p.sessionId())) return;
@@ -42,6 +43,10 @@ public final class ReplayController {
         }));
         ClientPlayConnectionEvents.DISCONNECT.register((h,c)->{stop(false);recording=null;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
+            if(autoPending && client.gui.screen() instanceof SignalLostScreen) {
+                autoPending=false;
+                if(FpvController.settings().replayAuto && available()) request(FpvController.settings().replaySlow);
+            }
             if(!isPlaying()) return;
             if(client.level!=level||client.player==null||!client.player.isAlive()) {stop(true);recording=null;return;}
             cursor+=mode==2?.25:1;
@@ -71,7 +76,7 @@ public final class ReplayController {
         return String.format(java.util.Locale.ROOT,"TIME %.1fs | MAX %.1f m/s | ALT %.1f m",
                 recording.flightTicks()/20.0,recording.maximumSpeed(),recording.maximumAltitude());
     }
-    public static boolean available() {return recording!=null && (System.nanoTime()-received)<60_000_000_000L;}
+    public static boolean available() {return FpvController.settings().replayEnabled && recording!=null && (System.nanoTime()-received)<60_000_000_000L;}
     public static boolean isPlaying() {return camera!=null;}
     public static boolean isCamera(Entity entity) { return camera!=null && entity==camera; }
     public static boolean isGhost(Entity entity) {return entity==ghost;}

@@ -1,5 +1,7 @@
 package io.github.riveyder.shahed.entity;
 
+import io.github.riveyder.shahed.control.DroneConfig;
+
 import io.github.riveyder.shahed.registry.ModEntities;
 import io.github.riveyder.shahed.control.DroneInput;
 import java.util.Objects;
@@ -169,6 +171,7 @@ public final class DroneEntity extends Entity {
         yawVelocity = Mth.lerp(0.12F, yawVelocity, input.yaw() * 4.5F);
         pitchVelocity = Mth.lerp(0.12F, pitchVelocity, Mth.clamp(pitchDemand, -3, 3));
         float bankTarget = -input.strafe() * 35.0F - input.yaw() * 12.0F;
+        if(!DroneConfig.get().stabilization() && input.strafe()==0 && input.yaw()==0 && isFlying()) bankTarget=getRoll();
         rollVelocity = Mth.clamp((rollVelocity + (bankTarget - getRoll()) * 0.025F) * 0.78F, -3, 3);
         float bank = Mth.clamp(getRoll() + rollVelocity, -50, 50);
         entityData.set(ROLL, bank);
@@ -193,7 +196,7 @@ public final class DroneEntity extends Entity {
         double forwardAirspeed = Math.max(0, oldVelocity.dot(forward));
         double lift = Math.min(0.040, forwardAirspeed * forwardAirspeed * 0.041);
         double airBrake = input.brake() ? 0.11 : Math.max(0, -input.forward()) * 0.065;
-        double drag = 0.008 + 0.024 * airspeed + airBrake + (onGround() ? 0.025 : 0);
+        double drag = (0.008 + 0.024 * airspeed)*DroneConfig.get().dragMultiplier() + airBrake + (onGround() ? 0.025 : 0);
         Vec3 velocity = oldVelocity.scale(Math.exp(-drag))
                 .add(forward.scale(throttle * 0.045))
                 .add(wingUp.scale(lift))

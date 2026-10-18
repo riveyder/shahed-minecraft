@@ -10,6 +10,11 @@ public final class DroneNetworking {
     }
 
     public static void register() {
+        PayloadTypeRegistry.serverboundPlay().register(SettingsRequestPayload.TYPE,SettingsRequestPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SettingsStatePayload.TYPE,SettingsStatePayload.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(SettingsRequestPayload.TYPE,
+                (payload,context)->io.github.riveyder.shahed.control.DroneSettingsAuthority.receive(context.player(),payload));
+        io.github.riveyder.shahed.control.DroneSettingsAuthority.register();
         PayloadTypeRegistry.serverboundPlay().register(ReplayControlPayload.TYPE,ReplayControlPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(ReplayControlPayload.TYPE,ReplayControlPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(ReplayPayload.TYPE,ReplayPayload.CODEC);

@@ -9,7 +9,8 @@
     "MouseHandlerMixin",
     "MinecraftControlMixin",
     "GameRendererMixin",
-    "NightVisionMixin"
+    "NightVisionMixin",
+    "SoundVolumeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

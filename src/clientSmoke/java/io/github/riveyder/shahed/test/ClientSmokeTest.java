@@ -3,6 +3,9 @@ package io.github.riveyder.shahed.test;
 import io.github.riveyder.shahed.ShahedMod;
 import io.github.riveyder.shahed.client.*;
 import io.github.riveyder.shahed.control.DroneSessions;
+import io.github.riveyder.shahed.control.DroneConfig;
+import io.github.riveyder.shahed.network.SettingsRequestPayload;
+import net.minecraft.server.players.NameAndId;
 import io.github.riveyder.shahed.entity.DroneEntity;
 import io.github.riveyder.shahed.item.ControllerItem;
 import io.github.riveyder.shahed.registry.*;
@@ -36,9 +39,11 @@ public final class ClientSmokeTest implements FabricClientGameTest {
 
     private void exercise(ClientGameTestContext context,TestServerContext serverContext,TestServerConnection connection,String label) {
         AtomicReference<UUID> droneId=new AtomicReference<>();
+        AtomicReference<DroneConfig.Settings> savedPolicy=new AtomicReference<>();
         try {
             connection.waitForChunksRender();
             serverContext.runOnServer(server->{
+                savedPolicy.set(DroneConfig.get());
                 var player=server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.CREATIVE);
                 int x=player.blockPosition().getX(),z=player.blockPosition().getZ();
@@ -69,6 +74,44 @@ public final class ClientSmokeTest implements FabricClientGameTest {
             context.waitFor(client->FpvController.isActive());
             context.waitTicks(12);
             ShahedMod.LOGGER.info("FPV screenshot: {}",context.takeScreenshot(label+"-shahed-fpv"));
+            context.waitFor(client->ServerSettingsClient.state()!=null);
+            context.runOnClient(client->client.gui.setScreen(new FpvSettingsScreen(null,FpvController.settings())));
+            context.waitTicks(12);
+            ShahedMod.LOGGER.info("Settings screenshot: {}",context.takeScreenshot(label+"-shahed-settings"));
+            context.clickScreenButton("Камера / HUD");
+            context.clickScreenButton("HUD: FULL");
+            context.clickScreenButton("Цвет: Зелёный");
+            context.runOnClient(client->client.gui.screen().onClose());
+            context.waitTicks(3);
+            ShahedMod.LOGGER.info("Minimal white HUD: {}",context.takeScreenshot(label+"-shahed-hud-minimal"));
+            context.runOnClient(client->{
+                if(!FpvController.settings().minimalHud || FpvController.settings().hudColor!=1)
+                    throw new AssertionError("Live menu did not change HUD preferences");
+                FpvController.settings().minimalHud=false;FpvController.settings().hudColor=0;
+            });
+            context.waitTicks(12);
+            context.runOnClient(client->ServerSettingsClient.request(1,DroneConfig.DEFAULTS.preset(2),SettingsRequestPayload.NONE));
+            context.waitFor(client->ServerSettingsClient.state().status().contains("администратора"));
+            serverContext.runOnServer(server->{
+                if(!DroneConfig.get().equals(savedPolicy.get())) throw new AssertionError("Non-admin packet changed server policy");
+                server.getPlayerList().op(new NameAndId(server.getPlayerList().getPlayers().getFirst().getGameProfile()));
+            });
+            context.waitTicks(12);
+            context.runOnClient(client->{client.gui.setScreen(new FpvSettingsScreen(null,FpvController.settings()));});
+            context.waitFor(client->ServerSettingsClient.state().admin());
+            context.clickScreenButton("Урон сущностям [сервер]: Вкл");
+            context.waitTicks(12);
+            context.clickScreenButton("Применить серверные");
+            context.waitFor(client->!ServerSettingsClient.state().settings().entityDamage());
+            serverContext.runOnServer(server->{if(DroneConfig.get().entityDamage()) throw new AssertionError("Menu change did not reach authority");});
+            context.runOnClient(client->{client.options.guiScale().set(1);client.resizeGui();});
+            context.waitTicks(2);
+            ShahedMod.LOGGER.info("Admin settings scale 1: {}",context.takeScreenshot(label+"-shahed-admin-settings"));
+            context.clickScreenButton("Урон сущностям [сервер]: Выкл");
+            context.waitTicks(12);
+            context.clickScreenButton("Применить серверные");
+            context.waitFor(client->ServerSettingsClient.state().settings().entityDamage());
+            context.runOnClient(client->{client.gui.screen().onClose();client.options.guiScale().set(2);client.resizeGui();});
             context.runOnClient(client->FpvController.settings().nightVision=true);
             context.waitTicks(2);
             ShahedMod.LOGGER.info("Night vision screenshot: {}",context.takeScreenshot(label+"-shahed-night-vision"));
@@ -125,7 +168,8 @@ public final class ClientSmokeTest implements FabricClientGameTest {
             context.waitFor(client->ReplayController.isPlaying());
             context.waitTicks(12);
             ShahedMod.LOGGER.info("Replay screenshot: {}",context.takeScreenshot(label+"-shahed-replay"));
-            context.waitFor(client->ReplayController.isAftermath());
+            // A complete 200-frame recording at quarter speed takes 40 seconds before impact.
+            context.waitFor(client->ReplayController.isAftermath(),1000);
             context.waitTicks(35);
             context.runOnClient(client->{
                 if(!ReplayController.isPlaying() || client.getCameraEntity()==client.player)
@@ -138,6 +182,7 @@ public final class ClientSmokeTest implements FabricClientGameTest {
             context.waitFor(client->!FpvController.isActive() && client.getCameraEntity()==client.player);
             serverContext.waitFor(server->!DroneSessions.isControlling(server.getPlayerList().getPlayers().getFirst()));
         } finally {
+            serverContext.runOnServer(server->{if(savedPolicy.get()!=null) DroneConfig.update(savedPolicy.get());});
             CrashEffectsProbe.captureClient=false;
             CrashEffectsProbe.CLIENT_PACKETS.clear();
             context.runOnClient(client->{FpvController.settings().nightVision=false;FpvController.exit(false);});

@@ -84,7 +84,7 @@ public final class DroneSessions {
 
     /** Owner opt-in grants a camera, never input authority or ownership. */
     public static boolean spectate(ServerPlayer player,DroneEntity drone) {
-        if(!drone.spectatorsAllowed()||drone.isRemoved()||drone.level()!=player.level()
+        if(!DroneConfig.get().spectators()||!drone.spectatorsAllowed()||drone.isRemoved()||drone.level()!=player.level()
                 ||isControlling(player)||!player.isAlive()||player.isSpectator()||player.isPassenger()||player.isSleeping()
                 ||!player.getItemBySlot(EquipmentSlot.HEAD).is(ModItems.FPV_GOGGLES)) return false;
         if(player.connection!=null && (!ServerPlayNetworking.canSend(player,SessionPayload.TYPE)
@@ -146,6 +146,9 @@ public final class DroneSessions {
         }
         if (DRONES.containsKey(drone.getUUID())) {
             return reject(player, "occupied");
+        }
+        if(DRONES.size()>=DroneConfig.get().activeLimit()) {
+            message(player,Component.literal("Достигнут лимит активных пилотов сервера"));return false;
         }
         Session session = new Session(player, drone,false);
         PLAYERS.put(player.getUUID(), session);
@@ -246,7 +249,7 @@ public final class DroneSessions {
             session.ticksSinceInput++;
             session.packetsThisTick = 0;
             session.previousHurtTime = session.player.hurtTime;
-            if (++session.telemetryTicks % 5 == 0) {
+            if (++session.telemetryTicks % DroneConfig.get().telemetryInterval() == 0) {
                 telemetry(session);
             }
         }
@@ -272,7 +275,7 @@ public final class DroneSessions {
                 || (!session.spectator && !heldBinding(player, drone.getUUID()))) {
             return "equipment";
         }
-        if(session.spectator && !drone.spectatorsAllowed()) return "spectator_revoked";
+        if(session.spectator && (!drone.spectatorsAllowed()||!DroneConfig.get().spectators())) return "spectator_revoked";
         if (drone.isDestroyed()) return "destroyed";
         if (drone.isRemoved() || !drone.isAlive() || drone.level() != session.level
                 || (!session.spectator && !drone.getOwnerUuid().filter(player.getUUID()::equals).isPresent())) {

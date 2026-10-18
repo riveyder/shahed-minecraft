@@ -20,7 +20,7 @@ public final class SignalLostScreen extends Screen {
                 .bounds(width/2+4,height/2+24,100,20).build());
     }
     private boolean canReplay() { return ReplayController.available(); }
-    private void playReplay() { ReplayController.request(false); }
+    private void playReplay() { ReplayController.request(FpvController.settings().replaySlow); }
     @Override public void extractRenderState(GuiGraphicsExtractor graphics,int mouseX,int mouseY,float delta) {
         graphics.fill(0,0,width,height,0xFF050908);
         long elapsed=(System.nanoTime()-opened)/1_000_000;

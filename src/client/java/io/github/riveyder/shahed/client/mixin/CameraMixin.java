@@ -14,10 +14,16 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** Adjust before Camera.update prepares projection/culling, so every render pass shares the pose. */
 @Mixin(Camera.class)
 abstract class CameraMixin {
+    @Inject(method="calculateFov",at=@At("RETURN"),cancellable=true)
+    private void shahed$fov(float partialTick,CallbackInfoReturnable<Float> callback) {
+        if(FpvController.isActive() || io.github.riveyder.shahed.client.ReplayController.isPlaying())
+            callback.setReturnValue((float)FpvController.settings().cameraFov);
+    }
     @Shadow private Entity entity;
     @Shadow @Final private Quaternionf rotation;
     @Shadow @Final private Vector3f forwards;
@@ -39,7 +45,7 @@ abstract class CameraMixin {
         if (!(entity instanceof DroneEntity drone) || !FpvController.isCameraDrone(entity)) return;
         FpvController.CameraPose pose = FpvController.cameraPose(partialTick);
         setRotation(pose.yaw(), pose.pitch());
-        rotation.rotateZ(pose.roll() * Mth.DEG_TO_RAD);
+        if(FpvController.settings().cameraEffects) rotation.rotateZ(pose.roll() * Mth.DEG_TO_RAD);
         // Vanilla derives these in setRotation before bank is applied; refresh for frustum/fog/rays.
         forwards.set(0, 0, -1).rotate(rotation);
         up.set(0, 1, 0).rotate(rotation);

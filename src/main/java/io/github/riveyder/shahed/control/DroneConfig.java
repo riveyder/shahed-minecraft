@@ -10,24 +10,32 @@ import java.nio.file.StandardCopyOption;
 import java.io.IOException;
 import net.fabricmc.loader.api.FabricLoader;
 
-/** Server-owned gameplay policy, loaded once at startup. Safe defaults on invalid input. */
+/** Server-thread policy. Persist before publishing live updates; migrate missing fields safely. */
 public final class DroneConfig {
     private static final Gson GSON=new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE=FabricLoader.getInstance().getConfigDir().resolve("shahed-server.json");
     public static final Settings DEFAULTS = new Settings(false,8,true,.25F,true,true,256);
     private static Settings settings=DEFAULTS;
     public record Settings(boolean destroyBlocks,float explosionPower,boolean entityDamage,float damageScale,
-                           boolean particles,boolean sound,int maxBlocks) {
+                           boolean particles,boolean sound,int maxBlocks,boolean stabilization,
+                           float dragMultiplier,int activeLimit,boolean spectators,int telemetryInterval) {
+        public Settings(boolean blocks,float power,boolean damage,float scale,boolean particles,boolean sound,int cap) {
+            this(blocks,power,damage,scale,particles,sound,cap,true,1,16,true,5);
+        }
         public Settings(boolean blocks,float power) {this(blocks,power,true,1,true,true,256);}
         public Settings sanitized() {
             return new Settings(destroyBlocks,Float.isFinite(explosionPower)?Math.clamp(explosionPower,1,12):8,
-                    entityDamage,Float.isFinite(damageScale)?Math.clamp(damageScale,0,1):.25F,particles,sound,Math.clamp(maxBlocks,0,4096));
+                    entityDamage,Float.isFinite(damageScale)?Math.clamp(damageScale,0,1):.25F,particles,sound,Math.clamp(maxBlocks,0,4096),
+                    stabilization,Float.isFinite(dragMultiplier)?Math.clamp(dragMultiplier,.5F,2):1,
+                    Math.clamp(activeLimit,1,64),spectators,Math.clamp(telemetryInterval,1,20));
         }
-        public Settings preset(int preset) {return switch(preset) {
+        public Settings preset(int preset) {var explosion=switch(preset) {
             case 1 -> new Settings(true,6,true,1,true,true,256);
             case 2 -> new Settings(true,12,true,1,true,true,1024);
             default -> DEFAULTS;
-        };}
+        };return new Settings(explosion.destroyBlocks,explosion.explosionPower,explosion.entityDamage,
+                explosion.damageScale,explosion.particles,explosion.sound,explosion.maxBlocks,
+                stabilization,dragMultiplier,activeLimit,spectators,telemetryInterval);}
     }
     public static Settings get() { return settings; }
     public static void load() {

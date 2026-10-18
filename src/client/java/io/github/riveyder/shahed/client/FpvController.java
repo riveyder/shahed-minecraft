@@ -261,7 +261,7 @@ public final class FpvController {
         }
     }
 
-    public static void beginReturnFade() { returnFadeStart=System.nanoTime(); }
+    public static void beginReturnFade() { returnFadeStart=SETTINGS.cameraEffects?System.nanoTime():0; }
 
     private static void extractHud(GuiGraphicsExtractor graphics, DeltaTracker delta) {
         if(returnFadeStart!=0) {
