@@ -28,7 +28,7 @@ public final class DroneReplays {
         ServerTickEvents.START_SERVER_TICK.register(server->{
             for(var entry:new ArrayList<>(RECORDINGS.entrySet())) {
                 var recording=entry.getValue();
-                if(recording.level.getServer()==server && ++recording.age>1200) {
+                if(recording.level.getServer()==server && ++recording.age>1200 && !VIEWERS.containsKey(entry.getKey())) {
                     var viewer=VIEWERS.get(entry.getKey());
                     if(viewer!=null) stop(viewer.player,true);
                     RECORDINGS.remove(entry.getKey());
@@ -41,7 +41,7 @@ public final class DroneReplays {
                         ||p.getHealth()<viewer.health||p.position().distanceToSqr(viewer.body)>0.04
                         ||p.isPassenger()||p.isSpectator()||p.isSleeping()) { stop(p,true);continue; }
                 viewer.cursor+=viewer.mode==2?.25:1;
-                if(viewer.cursor>=viewer.recording.payload.frames().size()) { stop(p,true);continue; }
+                if(ReplayTimeline.finished(viewer.cursor,viewer.recording.payload.frames().size(),viewer.mode)) { stop(p,true);continue; }
                 p.setDeltaMovement(Vec3.ZERO);
                 if(p.connection!=null) {
                     p.connection.resetFlyingTicks();
@@ -59,7 +59,7 @@ public final class DroneReplays {
         });
     }
     public static void capture(ServerPlayer player,UUID sessionId,DroneEntity drone) {
-        var payload=new ReplayPayload(sessionId,drone.replayFrames(),drone.getFlightTicks(),drone.maximumSpeed(),drone.maximumAltitude(),drone.getPaint());
+        var payload=new ReplayPayload(sessionId,drone.replayFrames(),drone.getFlightTicks(),drone.maximumSpeed(),drone.maximumAltitude(),drone.getPaint(),drone.replayImpact());
         RECORDINGS.put(player.getUUID(),new Recording(player.level(),payload));
         if(player.connection!=null && ServerPlayNetworking.canSend(player,ReplayPayload.TYPE)) ServerPlayNetworking.send(player,payload);
     }
@@ -83,7 +83,9 @@ public final class DroneReplays {
     public static boolean isViewing(ServerPlayer p) { return VIEWERS.containsKey(p.getUUID()); }
     public static Vec3 position(ServerPlayer p) {
         var v=VIEWERS.get(p.getUUID());
-        return v==null?p.position():v.recording.payload.frames().get(Math.min((int)v.cursor,v.recording.payload.frames().size()-1)).position();
+        if(v==null) return p.position();
+        return v.cursor>=v.recording.payload.frames().size()-1?v.recording.payload.impact().position():
+                v.recording.payload.frames().get((int)v.cursor).position();
     }
     public static void stop(ServerPlayer player,boolean notify) {
         var viewer=VIEWERS.remove(player.getUUID());

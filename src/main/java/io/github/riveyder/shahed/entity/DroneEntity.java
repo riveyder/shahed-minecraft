@@ -47,6 +47,10 @@ public final class DroneEntity extends Entity {
     private float previousRoll;
     private float health = 10.0F;
     private boolean destroyed;
+    private io.github.riveyder.shahed.replay.ReplayImpact replayImpact;
+    public io.github.riveyder.shahed.replay.ReplayImpact replayImpact() {
+        return replayImpact==null?io.github.riveyder.shahed.replay.ReplayImpact.none(position()):replayImpact;
+    }
     private boolean spectatorsAllowed;
     public boolean spectatorsAllowed() { return spectatorsAllowed; }
     public void allowSpectators(boolean allowed) { spectatorsAllowed=allowed; }
@@ -409,6 +413,8 @@ public final class DroneEntity extends Entity {
     private boolean destroy(Vec3 explosionPosition) {
         if (!(level() instanceof ServerLevel server) || destroyed || isRemoved()) return false;
         destroyed=true;
+        replayImpact=new io.github.riveyder.shahed.replay.ReplayImpact(explosionPosition,!isTraining(),!isTraining(),!isTraining(),
+                io.github.riveyder.shahed.control.DroneConfig.get().explosionPower());
         recordFrame();
         io.github.riveyder.shahed.control.DroneSessions.destroyed(this);
         stopControl();

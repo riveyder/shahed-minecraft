@@ -15,6 +15,29 @@ import net.minecraft.world.level.block.Blocks;
 
 public final class ReplayGameTests {
     @GameTest
+    public void aftermathLastsSixtyTicksAtBothPlaybackSpeeds(GameTestHelper helper) {
+        for(int mode:new int[]{1,2}) {
+            double impact=199;
+            helper.assertFalse(ReplayTimeline.finished(impact+59*ReplayTimeline.rate(mode),200,mode),"Aftermath must retain camera for 59 ticks");
+            helper.assertTrue(ReplayTimeline.finished(impact+60*ReplayTimeline.rate(mode),200,mode),"Aftermath must end after 60 ticks at either speed");
+        }
+        helper.succeed();
+    }
+    @GameTest(maxTicks=100)
+    public void serverKeepsReplayLeaseAfterDestroyedDroneIsGone(GameTestHelper helper) {
+        var pilot=(ServerPlayer)helper.makeMockServerPlayer(GameType.CREATIVE);
+        var drone=helper.spawn(ModEntities.DRONE,3,80,3);
+        drone.setTraining(true);drone.destroy();
+        var session=UUID.randomUUID();
+        DroneReplays.capture(pilot,session,drone);
+        helper.assertTrue(DroneReplays.request(pilot,new ReplayControlPayload(session,1)),"Replay must start after entity removal");
+        helper.runAtTickTime(40,()->helper.assertTrue(DroneReplays.isViewing(pilot),"Aftermath lease must outlive the flight frames"));
+        helper.runAtTickTime(65,()->{
+            helper.assertFalse(DroneReplays.isViewing(pilot),"Finished aftermath must release tracking/body");
+            helper.assertTrue(drone.isRemoved(),"Replay must not resurrect the drone");helper.succeed();
+        });
+    }
+    @GameTest
     public void ringBufferKeepsLastTenSecondsAndWrapsYaw(GameTestHelper helper) {
         var buffer=new ReplayBuffer();
         for(int i=0;i<300;i++) buffer.add(new ReplayFrame(i,40,3,179,0,0));
@@ -31,7 +54,8 @@ public final class ReplayGameTests {
     public void replayPacketRoundTripAndOversizeRejection(GameTestHelper helper) {
         var ring=new ReplayBuffer();
         for(int i=0;i<200;i++) ring.add(new ReplayFrame(i+.125,-20,500,179,-20,25));
-        var packet=new ReplayPayload(UUID.randomUUID(),ring.snapshot(),1273,15.8,-20.5,2);
+        var packet=new ReplayPayload(UUID.randomUUID(),ring.snapshot(),1273,15.8,-20.5,2,
+                new ReplayImpact(new net.minecraft.world.phys.Vec3(200,-20,500),true,true,true,8));
         var buffer=new RegistryFriendlyByteBuf(Unpooled.buffer(),helper.getLevel().registryAccess());
         try {
             ReplayPayload.CODEC.encode(buffer,packet);
@@ -62,8 +86,8 @@ public final class ReplayGameTests {
             helper.assertTrue(DroneReplays.request(pilot,new ReplayControlPayload(session,2)),"Owner may view in slow motion");
             helper.assertTrue(DroneSessions.isControlling(pilot),"Replay must anchor the body");
             helper.assertFalse(DroneSessions.hasFlightSession(pilot),"Replay must never grant flight input authority");
-            helper.assertTrue(DroneSessions.trackingPosition(pilot).equals(drone.replayFrames().getFirst().position()),
-                    "Remote chunk origin must follow recorded camera, not body");
+            helper.assertTrue(DroneSessions.trackingPosition(pilot).equals(drone.replayImpact().position()),
+                    "A single terminal frame must track the crash site during aftermath, not the body");
             helper.assertFalse(DroneReplays.request(pilot,new ReplayControlPayload(session,1)),"Duplicate start must not allocate another viewer");
             DroneReplays.stop(pilot,false);
             helper.assertFalse(DroneSessions.isControlling(pilot),"Exit must release body and viewer");

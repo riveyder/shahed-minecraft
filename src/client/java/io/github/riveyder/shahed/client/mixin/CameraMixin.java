@@ -31,7 +31,8 @@ abstract class CameraMixin {
     private void shahed$alignFpv(float partialTick, CallbackInfo callback) {
         if(io.github.riveyder.shahed.client.ReplayController.isCamera(entity)) {
             var frame=io.github.riveyder.shahed.client.ReplayController.frame(partialTick);
-            setRotation(io.github.riveyder.shahed.client.ReplayController.cameraYaw(partialTick),18.0F);
+            setRotation(io.github.riveyder.shahed.client.ReplayController.cameraYaw(partialTick),
+                    io.github.riveyder.shahed.client.ReplayController.cameraPitch(partialTick));
             setPosition(io.github.riveyder.shahed.client.ReplayController.cameraPosition(partialTick));
             return;
         }

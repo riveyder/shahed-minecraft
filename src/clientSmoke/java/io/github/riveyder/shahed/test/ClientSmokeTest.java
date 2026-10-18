@@ -125,6 +125,15 @@ public final class ClientSmokeTest implements FabricClientGameTest {
             context.waitFor(client->ReplayController.isPlaying());
             context.waitTicks(12);
             ShahedMod.LOGGER.info("Replay screenshot: {}",context.takeScreenshot(label+"-shahed-replay"));
+            context.waitFor(client->ReplayController.isAftermath());
+            context.waitTicks(35);
+            context.runOnClient(client->{
+                if(!ReplayController.isPlaying() || client.getCameraEntity()==client.player)
+                    throw new AssertionError("Aftermath camera returned before three seconds");
+                if(CrashEffectsProbe.CLIENT_PACKETS.stream().filter(p->p instanceof ClientboundExplodePacket).count()!=1)
+                    throw new AssertionError("Replay repeated a server explosion");
+            });
+            ShahedMod.LOGGER.info("Aftermath screenshot: {}",context.takeScreenshot(label+"-shahed-aftermath"));
             context.runOnClient(client->FpvController.exit(true));
             context.waitFor(client->!FpvController.isActive() && client.getCameraEntity()==client.player);
             serverContext.waitFor(server->!DroneSessions.isControlling(server.getPlayerList().getPlayers().getFirst()));
