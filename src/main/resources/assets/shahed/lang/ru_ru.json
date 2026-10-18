@@ -61,5 +61,7 @@
   "message.shahed.session.reason.destroyed": "Дрон уничтожен",
   "item.shahed.training_drone": "Тренировочный дрон",
   "item.shahed.training_drone.hint": "Переживает столкновения, без взрыва. КРИВЫЕ РУКИ AEROSPACE",
-  "message.shahed.session.reason.spectator_revoked": "Владелец запретил просмотр камеры"
-,"key.shahed.hud_mode":"Режим HUD: FULL / MINIMAL"}
+  "message.shahed.session.reason.spectator_revoked": "Владелец запретил просмотр камеры",
+  "key.shahed.hud_mode": "Режим HUD: FULL / MINIMAL",
+  "block.shahed.crash_fire": "Догорающие обломки"
+}

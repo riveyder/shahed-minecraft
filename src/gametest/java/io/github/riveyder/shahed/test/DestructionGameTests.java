@@ -218,20 +218,20 @@ public final class DestructionGameTests {
     }
 
     @GameTest
-    public void destructionIsIdempotentAndDefaultExplosionPreservesBlocks(GameTestHelper helper) {
+    public void destructionIsIdempotentAndUnownedExplosionPreservesBlocks(GameTestHelper helper) {
         var drone=helper.spawn(ModEntities.DRONE,3,40,3);
         var block=helper.absolutePos(new BlockPos(3,39,3));
         helper.getLevel().setBlockAndUpdate(block,Blocks.GLASS.defaultBlockState());
         try {
-            helper.assertFalse(DroneConfig.DEFAULTS.destroyBlocks(),"Default must preserve blocks");
+            helper.assertFalse(DroneConfig.DEFAULTS.preset(0).destroyBlocks(),"SAFE must preserve blocks");
             helper.assertTrue(drone.destroy(),"First destruction must be accepted");
             helper.assertTrue(drone.isDestroyed() && drone.isRemoved(),"Server must mark and remove wreck");
             helper.assertFalse(drone.destroy(),"Duplicate destruction must not repeat effects");
             helper.assertFalse(drone.hurtServer(helper.getLevel(),drone.damageSources().generic(),100),
                     "Late damage must not repeat explosion");
             helper.assertTrue(helper.getLevel().getBlockState(block).is(Blocks.GLASS),
-                    "Default explosion must preserve fragile nearby blocks");
-            helper.assertTrue(new DroneConfig.Settings(true,Float.NaN).sanitized().explosionPower()==8,
+                    "Unowned explosion must preserve fragile nearby blocks");
+            helper.assertTrue(new DroneConfig.Settings(true,Float.NaN).sanitized().explosionPower()==19,
                     "Non-finite power must use default");
             helper.succeed();
         } finally { drone.discard(); helper.getLevel().setBlockAndUpdate(block,Blocks.AIR.defaultBlockState()); }

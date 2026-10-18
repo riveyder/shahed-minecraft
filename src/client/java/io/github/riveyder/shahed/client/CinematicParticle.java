@@ -21,10 +21,11 @@ public final class CinematicParticle extends SingleQuadParticle {
     }
     @Override public void tick() {
         super.tick();oRoll=roll;float t=(float)age/lifetime;
-        if(kind==0) {
+        if(kind==0||kind==6) {
             quadSize=size*(.5F+2.8F*(float)Math.sqrt(t));
             rCol=t<.65F?1:.3F;gCol=Math.max(.12F,.95F-t*1.3F);bCol=Math.max(.025F,.35F-t*.6F);
             alpha=Math.min(1,(1-t)*2.5F);setSpriteFromAge(sprites);roll+=.015F;
+        } else if(kind==5) {quadSize=size*(1-t*.5F);rCol=1;gCol=.3F+.35F*(1-t);bCol=.025F;alpha=(1-t);setSpriteFromAge(sprites);
         } else if(kind==2) {quadSize=size*(1+13*t);alpha=(1-t)*.65F;}
         else if(kind==3) {alpha=Math.min(1,(1-t)*4);roll+=.16F;}
         else {
@@ -34,7 +35,7 @@ public final class CinematicParticle extends SingleQuadParticle {
         }
     }
     @Override protected Layer getLayer() {return Layer.TRANSLUCENT;}
-    @Override protected int getLightCoords(float partial) {return kind==0||kind==2?15728880:super.getLightCoords(partial);}
+    @Override protected int getLightCoords(float partial) {return kind==0||kind==2||kind==5||kind==6?15728880:super.getLightCoords(partial);}
     @Override public void extract(QuadParticleRenderState state,Camera camera,float partial) {
         if(kind==2) extractRotatedQuad(state,camera,new Quaternionf().rotationX((float)-Math.PI/2),partial);
         else super.extract(state,camera,partial);

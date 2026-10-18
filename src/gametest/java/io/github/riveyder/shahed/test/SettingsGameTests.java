@@ -60,7 +60,7 @@ public final class SettingsGameTests {
             response=DroneSettingsAuthority.handle(admin,request(admin,1,invalid,SettingsRequestPayload.NONE));
             h.assertTrue(response.status().contains("сохранены"),"Admin changes must persist and publish");
             var safe=DroneConfig.get();
-            h.assertTrue(safe.explosionPower()==8&&safe.damageScale()==.25F&&safe.maxBlocks()==4096&&safe.dragMultiplier()==1
+            h.assertTrue(safe.explosionPower()==19&&safe.damageScale()==.25F&&safe.maxBlocks()==16384&&safe.dragMultiplier()==1
                     &&safe.activeLimit()==1&&safe.telemetryInterval()==20,"Invalid values must be bounded at authority boundary");
             h.assertTrue(DroneSettingsAuthority.handle(admin,request(admin,1,before,SettingsRequestPayload.NONE)).status().contains("часто"),"Rapid writes must be throttled");
         } finally {h.assertTrue(DroneConfig.update(before),"Restore test policy");}

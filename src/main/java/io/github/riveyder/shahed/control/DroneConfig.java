@@ -14,39 +14,47 @@ import net.fabricmc.loader.api.FabricLoader;
 public final class DroneConfig {
     private static final Gson GSON=new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE=FabricLoader.getInstance().getConfigDir().resolve("shahed-server.json");
-    public static final Settings DEFAULTS = new Settings(false,8,false,0,true,true,256);
+    public static final Settings DEFAULTS = new Settings(true,19,true,1,true,true,4096);
     private static Settings settings=DEFAULTS;
     public record Settings(boolean destroyBlocks,float explosionPower,boolean entityDamage,float damageScale,
                            boolean particles,boolean sound,int maxBlocks,boolean stabilization,
-                           float dragMultiplier,int activeLimit,boolean spectators,int telemetryInterval) {
+                           float dragMultiplier,int activeLimit,boolean spectators,int telemetryInterval,
+                           boolean realFire,boolean fireSpread,float effectScale,int audioRange) {
+        public Settings(boolean blocks,float power,boolean damage,float scale,boolean particles,boolean sound,int cap,
+                        boolean stabilization,float drag,int active,boolean spectators,int telemetry) {
+            this(blocks,power,damage,scale,particles,sound,cap,stabilization,drag,active,spectators,telemetry,false,false,2.5F,1024);
+        }
         public Settings(boolean blocks,float power,boolean damage,float scale,boolean particles,boolean sound,int cap) {
             this(blocks,power,damage,scale,particles,sound,cap,true,1,16,true,5);
         }
         public Settings(boolean blocks,float power) {this(blocks,power,true,1,true,true,256);}
         public Settings sanitized() {
-            return new Settings(destroyBlocks,Float.isFinite(explosionPower)?Math.clamp(explosionPower,1,12):8,
-                    entityDamage,Float.isFinite(damageScale)?Math.clamp(damageScale,0,1):.25F,particles,sound,Math.clamp(maxBlocks,0,4096),
+            return new Settings(destroyBlocks,Float.isFinite(explosionPower)?Math.clamp(explosionPower,1,32):19,
+                    entityDamage,Float.isFinite(damageScale)?Math.clamp(damageScale,0,1):.25F,particles,sound,Math.clamp(maxBlocks,0,16384),
                     stabilization,Float.isFinite(dragMultiplier)?Math.clamp(dragMultiplier,.5F,2):1,
-                    Math.clamp(activeLimit,1,64),spectators,Math.clamp(telemetryInterval,1,20));
+                    Math.clamp(activeLimit,1,64),spectators,Math.clamp(telemetryInterval,1,20),
+                    realFire&&destroyBlocks,fireSpread&&realFire&&destroyBlocks,
+                    Float.isFinite(effectScale)?Math.clamp(effectScale,1,4):2.5F,Math.clamp(audioRange,64,2048));
         }
         public Settings preset(int preset) {var explosion=switch(preset) {
-            case 1 -> new Settings(true,6,true,1,true,true,384);
-            case 2 -> new Settings(true,12,true,1,true,true,3072);
-            default -> DEFAULTS;
+            case 1 -> DEFAULTS;
+            case 2 -> new Settings(true,28,true,1,true,true,12288);
+            default -> new Settings(false,19,false,0,true,true,0);
         };return new Settings(explosion.destroyBlocks,explosion.explosionPower,explosion.entityDamage,
                 explosion.damageScale,explosion.particles,explosion.sound,explosion.maxBlocks,
-                stabilization,dragMultiplier,activeLimit,spectators,telemetryInterval);}
+                stabilization,dragMultiplier,activeLimit,spectators,telemetryInterval,
+                preset!=0&&realFire,preset!=0&&fireSpread,preset==2?4:2.5F,audioRange);}
     }
     public static Settings get() { return settings; }
     public static boolean needsConfirmation(Settings s) {
-        s=s.sanitized();return s.destroyBlocks() && (s.explosionPower()>8 || s.maxBlocks()>512);
+        s=s.sanitized();return s.realFire() || s.destroyBlocks() && (s.explosionPower()>8 || s.maxBlocks()>512);
     }
     public static void load() {
         settings=DEFAULTS;
         try {
             if(Files.isRegularFile(FILE)) settings=read(FILE); else write(FILE,DEFAULTS);
         } catch(Exception exception) {
-            settings=DEFAULTS;
+            settings=DEFAULTS.preset(0);
             ShahedMod.LOGGER.warn("Could not load drone server settings; using safe defaults",exception);
         }
     }

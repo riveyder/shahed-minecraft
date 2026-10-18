@@ -417,7 +417,8 @@ public final class DroneEntity extends Entity {
         if (!(level() instanceof ServerLevel server) || destroyed || isRemoved()) return false;
         destroyed=true;
         var policy=io.github.riveyder.shahed.control.DroneConfig.get();
-        replayImpact=new io.github.riveyder.shahed.replay.ReplayImpact(explosionPosition,!isTraining(),policy.particles(),policy.sound(),policy.explosionPower());
+        // Keep the existing replay visual protocol (0..12); gameplay uses the full policy below.
+        replayImpact=new io.github.riveyder.shahed.replay.ReplayImpact(explosionPosition,!isTraining(),policy.particles(),policy.sound(),Math.min(12,policy.explosionPower()));
         recordFrame();
         io.github.riveyder.shahed.control.DroneSessions.destroyed(this);
         stopControl();

@@ -14,7 +14,7 @@ abstract class SoundVolumeMixin {
     @Inject(method="calculateVolume(Lnet/minecraft/client/resources/sounds/SoundInstance;)F",at=@At("RETURN"),cancellable=true)
     private void shahed$volume(SoundInstance sound,CallbackInfoReturnable<Float> callback) {
         double gain=1;
-        if(sound.getIdentifier().equals(ShahedMod.id("blast"))||sound.getIdentifier().equals(ShahedMod.id("blast_echo"))) gain=FpvController.settings().explosionVolume;
+        if(sound.getIdentifier().equals(ShahedMod.id("blast"))||sound.getIdentifier().equals(ShahedMod.id("blast_echo"))||sound.getIdentifier().equals(ShahedMod.id("blast_distant"))) gain=FpvController.settings().explosionVolume;
         else if(sound.getIdentifier().toString().equals("minecraft:ui.button.click") &&
                 (Minecraft.getInstance().gui.screen() instanceof FpvSettingsScreen || Minecraft.getInstance().gui.screen() instanceof SignalLostScreen))
             gain=FpvController.settings().interfaceVolume;

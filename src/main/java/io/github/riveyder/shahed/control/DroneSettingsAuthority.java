@@ -47,7 +47,7 @@ public final class DroneSettingsAuthority {
                 var candidate=request.settings().sanitized();
                 if(DroneConfig.needsConfirmation(candidate) && !candidate.equals(DroneConfig.get())) {
                     nonce=UUID.randomUUID();POLICY_CHALLENGES.put(id,new PolicyChallenge(nonce,revision,now+200,candidate));
-                    var current=snapshot(p,"CHAOS: мощность "+candidate.explosionPower()+", до "+candidate.maxBlocks()+" блоков за взрыв. Подтвердите в течение 10 секунд.",nonce);
+                    var current=snapshot(p,"Разрушение: мощность "+candidate.explosionPower()+", до "+candidate.maxBlocks()+" блоков; огонь: "+candidate.realFire()+", распространение: "+candidate.fireSpread()+". Подтвердите за 10 с.",nonce);
                     return new SettingsStatePayload(current.revision(),current.settings(),current.admin(),current.status(),nonce,current.area(),6);
                 }
                 status=apply(p,candidate);

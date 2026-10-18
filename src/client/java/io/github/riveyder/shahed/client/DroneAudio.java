@@ -18,7 +18,7 @@ public final class DroneAudio {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             LOOPS.entrySet().removeIf(entry -> {
                 if (entry.getKey().isRemoved() || entry.getKey().level()!=client.level
-                        || client.getCameraEntity()!=null && entry.getKey().distanceToSqr(client.getCameraEntity())>6400) {
+                        || client.getCameraEntity()!=null && entry.getKey().distanceToSqr(client.getCameraEntity())>20736) {
                     for (Loop loop:entry.getValue()) client.getSoundManager().stop(loop);
                     return true;
                 }
@@ -34,7 +34,7 @@ public final class DroneAudio {
             if(client.level==null) return;
             for(var entity:client.level.entitiesForRendering()) {
                 if(entity instanceof DroneEntity drone && !ReplayController.isGhost(drone) && !LOOPS.containsKey(drone)
-                        && client.getCameraEntity()!=null && drone.distanceToSqr(client.getCameraEntity())<4096
+                        && client.getCameraEntity()!=null && drone.distanceToSqr(client.getCameraEntity())<16384
                         && (LOOPS.size()<32 || FpvController.isCameraDrone(drone))) {
                     Loop[] loops={new Loop(drone,false),new Loop(drone,true)};
                     LOOPS.put(drone,loops);
@@ -76,7 +76,7 @@ public final class DroneAudio {
                 // Radial motion gives a restrained flyby without relying on unavailable OpenAL source velocities.
                 double radial=Double.isFinite(previousDistance)?Math.clamp((previousDistance-distance)*20,-40,40):0;
                 previousDistance=distance;
-                float desired=(.72F+rpm*.8F)*(float)(1+radial*.003);
+                float desired=(.65F+rpm*.85F)*(float)(1+radial*.004);
                 pitch+=(desired-pitch)*.12F;
             } else {
                 x=y=z=0;

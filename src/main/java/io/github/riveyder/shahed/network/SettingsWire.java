@@ -10,9 +10,10 @@ final class SettingsWire {
         b.writeFloat(s.damageScale());b.writeBoolean(s.particles());b.writeBoolean(s.sound());b.writeVarInt(s.maxBlocks());
         b.writeBoolean(s.stabilization());b.writeFloat(s.dragMultiplier());b.writeVarInt(s.activeLimit());
         b.writeBoolean(s.spectators());b.writeVarInt(s.telemetryInterval());
+        b.writeBoolean(s.realFire());b.writeBoolean(s.fireSpread());b.writeFloat(s.effectScale());b.writeVarInt(s.audioRange());
     }
     static Settings read(RegistryFriendlyByteBuf b) {return new Settings(b.readBoolean(),b.readFloat(),b.readBoolean(),
             b.readFloat(),b.readBoolean(),b.readBoolean(),b.readVarInt(),b.readBoolean(),b.readFloat(),
-            b.readVarInt(),b.readBoolean(),b.readVarInt());}
+            b.readVarInt(),b.readBoolean(),b.readVarInt(),b.readBoolean(),b.readBoolean(),b.readFloat(),b.readVarInt());}
     private SettingsWire() {}
 }

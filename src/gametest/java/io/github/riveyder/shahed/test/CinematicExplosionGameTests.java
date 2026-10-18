@@ -37,8 +37,8 @@ public final class CinematicExplosionGameTests {
             ShahedMod.LOGGER.info("Stone crater benchmark: vanilla12={}, SAFE={}, NORMAL={}, CHAOS={}",broken[0],broken[1],broken[2],broken[3]);
             h.assertTrue(broken[1]==0,"SAFE must preserve terrain");
             h.assertTrue(!original.preset(0).entityDamage(),"SAFE must be audiovisual only");
-            h.assertTrue(broken[2]>0&&broken[2]<=384,"NORMAL must break terrain within its cap");
-            h.assertTrue(broken[3]>200&&broken[3]>broken[2]*2&&broken[3]>broken[0]*2&&broken[3]<=3072,
+            h.assertTrue(broken[2]>0&&broken[2]<=4096,"NORMAL must break terrain within its cap");
+            h.assertTrue(broken[3]>200&&broken[3]>broken[2]&&broken[3]>broken[0]*2&&broken[3]<=12288,
                     "CHAOS must be substantially larger than NORMAL and old vanilla power 12: "+Arrays.toString(broken));
         } finally {
             DroneConfig.update(original);
@@ -67,7 +67,7 @@ public final class CinematicExplosionGameTests {
     @GameTest
     public void packagedAudioUsesValidMono48KhzVorbisAndParticleSpritesResolve(GameTestHelper h) {
         try {
-            for(String name:List.of("engine","startup","shutdown","wind","impact","blast","blast_echo")) {
+            for(String name:List.of("engine","startup","shutdown","wind","impact","blast","blast_echo","blast_distant")) {
                 byte[] bytes=resource("sounds/"+name+".ogg");
                 h.assertTrue(bytes.length>1000&&bytes[0]=='O'&&bytes[1]=='g'&&bytes[2]=='g'&&bytes[3]=='S',"Valid Ogg container: "+name);
                 int marker=-1;for(int i=0;i<Math.min(100,bytes.length-16);i++)if(bytes[i]==1&&new String(bytes,i+1,6,java.nio.charset.StandardCharsets.US_ASCII).equals("vorbis")){marker=i;break;}

@@ -130,7 +130,7 @@ public final class ClientSmokeTest implements FabricClientGameTest {
             serverContext.runOnServer(server->{if(DroneConfig.get().destroyBlocks())throw new AssertionError("CHAOS applied before UI confirmation");});
             ShahedMod.LOGGER.info("CHAOS confirmation: {}",context.takeScreenshot(label+"-shahed-chaos-confirm"));
             context.clickScreenButton("Yes");
-            context.waitFor(client->ServerSettingsClient.state().settings().destroyBlocks()&&ServerSettingsClient.state().settings().maxBlocks()==3072);
+            context.waitFor(client->ServerSettingsClient.state().settings().destroyBlocks()&&ServerSettingsClient.state().settings().maxBlocks()==12288);
             context.clickScreenButton("Набор SAFE");
             context.waitTicks(12);
             context.clickScreenButton("Применить серверные");

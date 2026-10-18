@@ -32,9 +32,9 @@ class AudioTests(unittest.TestCase):
                 print(f'{name}: duration={len(a)/48000:.3f}s peak={max(abs(v) for v in a):.3f} rms={rms(a):.3f} seam={seam:.5f} edge_rms={edge:.3f}')
     def test_positional_ranges_and_manifest(self):
         manifest=json.loads((ASSETS/'sounds.json').read_text(encoding='utf8'))
-        self.assertEqual(set(manifest),{'engine','startup','shutdown','wind','impact','blast','blast_echo'})
+        self.assertEqual(set(manifest),{'engine','startup','shutdown','wind','impact','blast','blast_echo','blast_distant'})
         for n,v in manifest.items():
             sample=v['sounds'][0];self.assertEqual(sample['name'],'shahed:'+n)
             self.assertGreaterEqual(sample['attenuation_distance'],40)
-        self.assertEqual(manifest['blast']['sounds'][0]['attenuation_distance'],128)
+        self.assertEqual(manifest['blast']['sounds'][0]['attenuation_distance'],2048)
 if __name__=='__main__':unittest.main()

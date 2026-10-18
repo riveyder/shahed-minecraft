@@ -19,6 +19,7 @@ public final class ShahedMod implements ModInitializer {
     public void onInitialize() {
         io.github.riveyder.shahed.control.DroneConfig.load();
         ModEntities.initialize();
+        io.github.riveyder.shahed.control.CrashFireBlock.initialize();
         io.github.riveyder.shahed.registry.ModSounds.initialize();
         io.github.riveyder.shahed.registry.ModParticles.initialize();
         ModItems.initialize();

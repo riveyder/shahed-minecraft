@@ -8,13 +8,17 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.phys.Vec3;
 
 /** One audiovisual event, not another gameplay explosion. Visual size is a local preference. */
-public record ExplosionEffectPayload(UUID id,Vec3 position,long seed,boolean particles,boolean sound) implements CustomPacketPayload {
-    public static final Type<ExplosionEffectPayload> TYPE=new Type<>(ShahedMod.id("explosion_effect_v1"));
+public record ExplosionEffectPayload(UUID id,Vec3 position,long seed,boolean particles,boolean sound,float visualScale,int audioRange) implements CustomPacketPayload {
+    public ExplosionEffectPayload(UUID id,Vec3 position,long seed,boolean particles,boolean sound) {
+        this(id,position,seed,particles,sound,2.5F,1024);
+    }
+    public static final Type<ExplosionEffectPayload> TYPE=new Type<>(ShahedMod.id("explosion_effect_v2"));
     public static final StreamCodec<RegistryFriendlyByteBuf,ExplosionEffectPayload> CODEC=StreamCodec.ofMember(
             (p,b)->{b.writeUUID(p.id);b.writeDouble(p.position.x);b.writeDouble(p.position.y);b.writeDouble(p.position.z);
-                b.writeLong(p.seed);b.writeBoolean(p.particles);b.writeBoolean(p.sound);},
-            b->new ExplosionEffectPayload(b.readUUID(),new Vec3(b.readDouble(),b.readDouble(),b.readDouble()),b.readLong(),b.readBoolean(),b.readBoolean()));
-    public boolean valid() {return Double.isFinite(position.x)&&Double.isFinite(position.y)&&Double.isFinite(position.z)
+                b.writeLong(p.seed);b.writeBoolean(p.particles);b.writeBoolean(p.sound);b.writeFloat(p.visualScale);b.writeVarInt(p.audioRange);},
+            b->new ExplosionEffectPayload(b.readUUID(),new Vec3(b.readDouble(),b.readDouble(),b.readDouble()),b.readLong(),b.readBoolean(),b.readBoolean(),b.readFloat(),b.readVarInt()));
+    public boolean valid() {return Float.isFinite(visualScale)&&visualScale>=1&&visualScale<=4&&audioRange>=64&&audioRange<=2048
+            &&Double.isFinite(position.x)&&Double.isFinite(position.y)&&Double.isFinite(position.z)
             &&Math.abs(position.x)<=30_000_000&&Math.abs(position.z)<=30_000_000&&Math.abs(position.y)<=20_000_000;}
     @Override public Type<ExplosionEffectPayload> type() {return TYPE;}
 }
