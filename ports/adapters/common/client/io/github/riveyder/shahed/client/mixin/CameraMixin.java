@@ -1,0 +1,72 @@
+package io.github.riveyder.shahed.client.mixin;
+
+import io.github.riveyder.shahed.client.FpvController;
+import io.github.riveyder.shahed.entity.DroneEntity;
+import net.minecraft.client.Camera;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+/** Adjust before Camera.update prepares projection/culling, so every render pass shares the pose. */
+@Mixin(Camera.class)
+abstract class CameraMixin {
+    @Shadow private Entity entity;
+    @Shadow @Final private Quaternionf rotation;
+    @Shadow @Final private Vector3f forwards;
+    @Shadow @Final private Vector3f up;
+    @Shadow @Final private Vector3f left;
+
+    @Shadow protected abstract void setRotation(float yaw, float pitch);
+    @Shadow protected abstract void setPosition(Vec3 position);
+
+    @Inject(method = "setup", at = @At("TAIL"))
+    private void shahed$alignFpv(net.minecraft.world.level.BlockGetter world,Entity cameraEntity,boolean detached,boolean mirrored,float partialTick, CallbackInfo callback) {
+        if(io.github.riveyder.shahed.client.ReplayController.isCamera(entity)) {
+            var frame=io.github.riveyder.shahed.client.ReplayController.frame(partialTick);
+            setRotation(io.github.riveyder.shahed.client.ReplayController.cameraYaw(partialTick),
+                    io.github.riveyder.shahed.client.ReplayController.cameraPitch(partialTick));
+            setPosition(io.github.riveyder.shahed.client.ReplayController.cameraPosition(partialTick));
+            shahed$shake();
+            return;
+        }
+        if (!(entity instanceof DroneEntity drone) || !FpvController.isCameraDrone(entity)) {shahed$shake();return;}
+        FpvController.CameraPose pose = FpvController.cameraPose(partialTick);
+        setRotation(pose.yaw(), pose.pitch());
+        if(FpvController.settings().cameraEffects) rotation.rotateZ(pose.roll() * Mth.DEG_TO_RAD);
+        // Vanilla derives these in setRotation before bank is applied; refresh for frustum/fog/rays.
+        forwards.set(0, 0, -1).rotate(rotation);
+        up.set(0, 1, 0).rotate(rotation);
+        left.set(-1, 0, 0).rotate(rotation);
+
+        // The visible lens is on the nose at local -Z = 33.7 px, rather than at the
+        // entity centre. Rotate this fixed mount with the drone's real attitude;
+        // the smoothed viewing direction must not slide the lens around its body.
+        Quaternionf mount = new Quaternionf().rotationYXZ(
+                Mth.PI - drone.getYRot(partialTick) * Mth.DEG_TO_RAD,
+                -drone.getXRot(partialTick) * Mth.DEG_TO_RAD,
+                drone.getRoll(partialTick) * Mth.DEG_TO_RAD);
+        Vector3f offset = new Vector3f(0.0F, drone.kind()==io.github.riveyder.shahed.entity.AircraftKind.SHAHED?.49F:drone.kind().hover?.44F:.6F,
+                drone.kind()==io.github.riveyder.shahed.entity.AircraftKind.SHAHED?-2.15F:drone.kind().hover?-.46F:-.85F).rotate(mount);
+        setPosition(new Vec3(Mth.lerp(partialTick, drone.xo, drone.getX()) + offset.x(),
+                Mth.lerp(partialTick, drone.yo, drone.getY()) + offset.y(),
+                Mth.lerp(partialTick, drone.zo, drone.getZ()) + offset.z()));
+        shahed$shake();
+    }
+    private void shahed$shake() {
+        float strength=io.github.riveyder.shahed.client.ExplosionEffects.shake();
+        if(strength<=0)return;
+        double time=System.nanoTime()/1e9;
+        rotation.rotateXYZ((float)Math.sin(time*71)*strength*.025F,0,(float)Math.sin(time*53)*strength*.02F);
+        forwards.set(0,0,-1).rotate(rotation);up.set(0,1,0).rotate(rotation);left.set(-1,0,0).rotate(rotation);
+
+    }
+}

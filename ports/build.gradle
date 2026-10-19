@@ -1,0 +1,34 @@
+plugins { id 'net.fabricmc.fabric-loom-remap' version '1.18.4' }
+
+def target = providers.gradleProperty('mc').getOrElse('1.20.1')
+def targets = ['1.20.1': [java:17, api:'0.92.12+1.20.1'], '1.21.1': [java:21, api:'0.116.17+1.21.1']]
+if (!targets.containsKey(target)) throw new GradleException("Unsupported build target: ${target}")
+def spec=targets[target]
+version = "1.0.1+mc${target}"
+group = 'io.github.riveyder'
+base { archivesName = 'shahed-fpv-mayhem' }
+layout.buildDirectory = file("build/${target}")
+loom { splitEnvironmentSourceSets(); mods { shahed { sourceSet sourceSets.main; sourceSet sourceSets.client } } }
+dependencies {
+    minecraft "com.mojang:minecraft:${target}"
+    mappings loom.officialMojangMappings()
+    modImplementation 'net.fabricmc:fabric-loader:0.19.5'
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${spec.api}"
+}
+def generated = layout.buildDirectory.dir('generated')
+tasks.register('preparePort', Exec) {
+    workingDir projectDir.parentFile
+    commandLine 'python', '-B', '-X', 'utf8', 'ports/tools/prepare.py', target
+    inputs.dir('../src/main'); inputs.dir('../src/client'); inputs.dir('adapters'); inputs.dir('tools')
+    outputs.dir(generated)
+}
+sourceSets.main.java.setSrcDirs([generated.map { it.dir('main') }])
+sourceSets.client.java.setSrcDirs([generated.map { it.dir('client') }])
+sourceSets.main.resources.setSrcDirs([generated.map { it.dir('resources') }])
+tasks.withType(JavaCompile).configureEach { dependsOn 'preparePort'; options.release = spec.java; options.encoding = 'UTF-8'; options.compilerArgs += ['-Xmaxerrs','300'] }
+tasks.withType(ProcessResources).configureEach { dependsOn 'preparePort' }
+java { toolchain.languageVersion = JavaLanguageVersion.of(spec.java); withSourcesJar() }
+jar { from('../LICENSE') }
+// No run configurations or test servers are invoked by build.
+
+tasks.named('sourcesJar') { dependsOn 'preparePort' }
