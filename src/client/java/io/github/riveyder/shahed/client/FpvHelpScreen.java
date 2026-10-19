@@ -22,7 +22,11 @@ public final class FpvHelpScreen extends Screen {
                         FpvKeys.DOWN.getTranslatedKeyMessage(),FpvKeys.BRAKE.getTranslatedKeyMessage(),FpvKeys.EXIT.getTranslatedKeyMessage()),
                 Component.translatable("help.shahed.camera",FpvKeys.SETTINGS.getTranslatedKeyMessage(),FpvKeys.HUD_MODE.getTranslatedKeyMessage(),
                         FpvKeys.YAW_LEFT.getTranslatedKeyMessage(),FpvKeys.YAW_RIGHT.getTranslatedKeyMessage(),FpvKeys.PITCH_UP.getTranslatedKeyMessage(),FpvKeys.PITCH_DOWN.getTranslatedKeyMessage()),
-                Component.translatable("help.shahed.racing"),Component.translatable("help.shahed.challenges"),
+                Component.translatable("help.shahed.fleet",FpvKeys.FORWARD.getTranslatedKeyMessage(),FpvKeys.BACKWARD.getTranslatedKeyMessage(),
+                        FpvKeys.LEFT.getTranslatedKeyMessage(),FpvKeys.RIGHT.getTranslatedKeyMessage(),FpvKeys.UP.getTranslatedKeyMessage(),
+                        FpvKeys.DOWN.getTranslatedKeyMessage(),FpvKeys.BRAKE.getTranslatedKeyMessage()),
+                Component.translatable("help.shahed.payload",FpvKeys.RELEASE_PAYLOAD.getTranslatedKeyMessage()),
+                Component.translatable("help.shahed.fleet_safety"),Component.translatable("help.shahed.racing"),Component.translatable("help.shahed.challenges"),
                 Component.translatable("race.command_help"),Component.translatable("race.editor_help"));
         for(var section:sections){lines.addAll(font.split(section,w));lines.add(FormattedCharSequence.EMPTY);}
         perPage=Math.max(1,(height-85)/11);pages=Math.max(1,(lines.size()+perPage-1)/perPage);page=Math.min(page,pages-1);

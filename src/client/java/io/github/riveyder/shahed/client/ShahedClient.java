@@ -13,6 +13,14 @@ public final class ShahedClient implements ClientModInitializer {
     public void onInitializeClient() {
         ModelLayerRegistry.registerModelLayer(DroneModel.LAYER, DroneModel::createBodyLayer);
         EntityRenderers.register(ModEntities.DRONE, DroneRenderer::new);
+        ModelLayerRegistry.registerModelLayer(io.github.riveyder.shahed.client.model.FleetModel.QUAD,io.github.riveyder.shahed.client.model.FleetModel::quadLayer);
+        ModelLayerRegistry.registerModelLayer(io.github.riveyder.shahed.client.model.FleetModel.CONTACT,io.github.riveyder.shahed.client.model.FleetModel::contactLayer);
+        ModelLayerRegistry.registerModelLayer(io.github.riveyder.shahed.client.model.FleetModel.JET,io.github.riveyder.shahed.client.model.FleetModel::jetLayer);
+        ModelLayerRegistry.registerModelLayer(io.github.riveyder.shahed.client.model.PayloadModel.LAYER,io.github.riveyder.shahed.client.model.PayloadModel::layer);
+        EntityRenderers.register(ModEntities.QUAD,c->new DroneRenderer(c,io.github.riveyder.shahed.entity.AircraftKind.QUAD));
+        EntityRenderers.register(ModEntities.CONTACT_QUAD,c->new DroneRenderer(c,io.github.riveyder.shahed.entity.AircraftKind.CONTACT));
+        EntityRenderers.register(ModEntities.JET,c->new DroneRenderer(c,io.github.riveyder.shahed.entity.AircraftKind.JET));
+        EntityRenderers.register(ModEntities.PAYLOAD,io.github.riveyder.shahed.client.renderer.PayloadRenderer::new);
         FpvController.initialize();
         DroneAudio.initialize();
         ReplayController.initialize();

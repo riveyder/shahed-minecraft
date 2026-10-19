@@ -32,7 +32,16 @@ public final class DroneAudio {
                 return false;
             });
             if(client.level==null) return;
+            int exhaust=0;
             for(var entity:client.level.entitiesForRendering()) {
+                if(entity instanceof DroneEntity jet && jet.kind()==io.github.riveyder.shahed.entity.AircraftKind.JET
+                        &&jet.getThrottle()>.08F&&!ReplayController.isGhost(jet)&&exhaust<8&&client.level.getGameTime()%3==0
+                        &&client.gameRenderer.mainCamera().position().distanceToSqr(jet.position())<128*128){
+                    var back=net.minecraft.world.phys.Vec3.directionFromRotation(jet.getXRot(),jet.getYRot()).scale(-1.1);
+                    var at=jet.position().add(back).add(0,.35,0);
+                    client.level.addParticle(net.minecraft.core.particles.ParticleTypes.FLAME,at.x,at.y,at.z,back.x*.03,back.y*.03,back.z*.03);
+                    client.level.addParticle(net.minecraft.core.particles.ParticleTypes.SMOKE,at.x,at.y,at.z,back.x*.06,.015,back.z*.06);exhaust+=2;
+                }
                 if(entity instanceof DroneEntity drone && !ReplayController.isGhost(drone) && !LOOPS.containsKey(drone)
                         && client.getCameraEntity()!=null && drone.distanceToSqr(client.getCameraEntity())<16384
                         && (LOOPS.size()<32 || FpvController.isCameraDrone(drone))) {
@@ -49,7 +58,7 @@ public final class DroneAudio {
         private boolean powered;
         private double previousDistance=Double.NaN;
         Loop(DroneEntity drone,boolean wind) {
-            super(wind?ModSounds.WIND:ModSounds.ENGINE,SoundSource.NEUTRAL,RandomSource.create());
+            super(wind?ModSounds.WIND:ModSounds.aircraft(drone.kind(),0),SoundSource.NEUTRAL,RandomSource.create());
             this.drone=drone; this.wind=wind;
             powered=drone.getThrottle()>.03F;
             looping=true; delay=0; volume=0;
@@ -66,7 +75,7 @@ public final class DroneAudio {
                 x=drone.getX(); y=drone.getY(); z=drone.getZ();
                 boolean now=powered?rpm>.015F:rpm>.04F;
                 if(now!=powered) {
-                    client.level.playLocalSound(x,y,z,now?ModSounds.STARTUP:ModSounds.SHUTDOWN,
+                    client.level.playLocalSound(x,y,z,ModSounds.aircraft(drone.kind(),now?1:2),
                             SoundSource.NEUTRAL,(float)settings.engineVolume,1,false);
                     powered=now;
                 }
@@ -81,7 +90,7 @@ public final class DroneAudio {
             } else {
                 x=y=z=0;
                 float target=FpvController.isCameraDrone(drone)
-                        ? (float)Math.min(1,drone.getDeltaMovement().length()/DroneEntity.MAX_SPEED)*(float)settings.windVolume : 0;
+                        ? (float)Math.min(1,drone.getDeltaMovement().length()/drone.maxSpeed())*(float)settings.windVolume : 0;
                 volume+=(target-volume)*.15F;
                 pitch=.8F+Math.min(1,(float)drone.getDeltaMovement().length());
             }

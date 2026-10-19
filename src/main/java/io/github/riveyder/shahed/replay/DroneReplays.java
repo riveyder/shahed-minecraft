@@ -59,7 +59,7 @@ public final class DroneReplays {
         });
     }
     public static void capture(ServerPlayer player,UUID sessionId,DroneEntity drone) {
-        var payload=new ReplayPayload(sessionId,drone.replayFrames(),drone.getFlightTicks(),drone.maximumSpeed(),drone.maximumAltitude(),drone.getPaint(),drone.replayImpact());
+        var payload=new ReplayPayload(sessionId,drone.replayFrames(),drone.getFlightTicks(),drone.maximumSpeed(),drone.maximumAltitude(),drone.getPaint(),drone.replayImpact(),drone.kind().id,drone.hasPayload());
         RECORDINGS.put(player.getUUID(),new Recording(player.level(),payload));
         if(player.connection!=null && ServerPlayNetworking.canSend(player,ReplayPayload.TYPE)) ServerPlayNetworking.send(player,payload);
     }

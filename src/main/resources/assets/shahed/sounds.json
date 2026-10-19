@@ -62,5 +62,77 @@
         "attenuation_distance": 2048
       }
     ]
+  },
+  "quad_engine": {
+    "sounds": [
+      {
+        "name": "shahed:quad_engine",
+        "attenuation_distance": 144
+      }
+    ]
+  },
+  "quad_startup": {
+    "sounds": [
+      {
+        "name": "shahed:quad_startup",
+        "attenuation_distance": 64
+      }
+    ]
+  },
+  "quad_shutdown": {
+    "sounds": [
+      {
+        "name": "shahed:quad_shutdown",
+        "attenuation_distance": 64
+      }
+    ]
+  },
+  "contact_quad_engine": {
+    "sounds": [
+      {
+        "name": "shahed:contact_quad_engine",
+        "attenuation_distance": 144
+      }
+    ]
+  },
+  "contact_quad_startup": {
+    "sounds": [
+      {
+        "name": "shahed:contact_quad_startup",
+        "attenuation_distance": 64
+      }
+    ]
+  },
+  "contact_quad_shutdown": {
+    "sounds": [
+      {
+        "name": "shahed:contact_quad_shutdown",
+        "attenuation_distance": 64
+      }
+    ]
+  },
+  "jet_engine": {
+    "sounds": [
+      {
+        "name": "shahed:jet_engine",
+        "attenuation_distance": 144
+      }
+    ]
+  },
+  "jet_startup": {
+    "sounds": [
+      {
+        "name": "shahed:jet_startup",
+        "attenuation_distance": 64
+      }
+    ]
+  },
+  "jet_shutdown": {
+    "sounds": [
+      {
+        "name": "shahed:jet_shutdown",
+        "attenuation_distance": 64
+      }
+    ]
   }
 }

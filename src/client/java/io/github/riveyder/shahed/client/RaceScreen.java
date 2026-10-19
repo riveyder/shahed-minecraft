@@ -10,7 +10,7 @@ public final class RaceScreen extends Screen {
     private final Screen parent;
     private int page;
     private String selected="";
-    public RaceScreen(Screen parent){super(Component.translatable("race.menu"));this.parent=parent;RaceClient.request(0,"");}
+    public RaceScreen(Screen parent){super(Component.translatable("race.aircraft",FpvController.aircraftCategoryLabel()));this.parent=parent;RaceClient.request(0,"");}
     public void refresh(){rebuildWidgets();}
     @Override protected void init(){
         var courses=RaceClient.courses();int perPage=Math.max(1,(height-132)/24),pages=Math.max(1,(courses.size()+perPage-1)/perPage);

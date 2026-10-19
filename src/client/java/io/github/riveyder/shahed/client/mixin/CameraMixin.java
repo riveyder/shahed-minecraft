@@ -59,7 +59,8 @@ abstract class CameraMixin {
                 Mth.PI - drone.getYRot(partialTick) * Mth.DEG_TO_RAD,
                 -drone.getXRot(partialTick) * Mth.DEG_TO_RAD,
                 drone.getRoll(partialTick) * Mth.DEG_TO_RAD);
-        Vector3f offset = new Vector3f(0.0F, 0.49F, -2.15F).rotate(mount);
+        Vector3f offset = new Vector3f(0.0F, drone.kind()==io.github.riveyder.shahed.entity.AircraftKind.SHAHED?.49F:drone.kind().hover?.44F:.6F,
+                drone.kind()==io.github.riveyder.shahed.entity.AircraftKind.SHAHED?-2.15F:drone.kind().hover?-.46F:-.85F).rotate(mount);
         setPosition(new Vec3(Mth.lerp(partialTick, drone.xo, drone.getX()) + offset.x(),
                 Mth.lerp(partialTick, drone.yo, drone.getY()) + offset.y(),
                 Mth.lerp(partialTick, drone.zo, drone.getZ()) + offset.z()));

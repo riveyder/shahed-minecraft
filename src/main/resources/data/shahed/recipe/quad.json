@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "CIC",
+    "RPR",
+    "I I"
+  ],
+  "key": {
+    "C": "minecraft:copper_ingot",
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone",
+    "P": "#minecraft:planks"
+  },
+  "result": {
+    "id": "shahed:quad",
+    "count": 1
+  }
+}

@@ -17,13 +17,20 @@ import net.minecraft.resources.Identifier;
 
 /** Drone model adapter; renders the same pitch and bank as the FPV camera. */
 public final class DroneRenderer extends EntityRenderer<DroneEntity, DroneRenderState> {
-    private static final Identifier TEXTURE = ShahedMod.id("textures/entity/drone.png");
-    private final DroneModel model;
+    private final Identifier texture;
+    private final net.minecraft.client.model.EntityModel<DroneRenderState> model;
 
-    public DroneRenderer(EntityRendererProvider.Context context) {
+    public DroneRenderer(EntityRendererProvider.Context context){this(context,io.github.riveyder.shahed.entity.AircraftKind.SHAHED);}
+    public DroneRenderer(EntityRendererProvider.Context context,io.github.riveyder.shahed.entity.AircraftKind kind){
         super(context);
-        model = new DroneModel(context.bakeLayer(DroneModel.LAYER));
-        shadowRadius = 1.65F;
+        texture=ShahedMod.id("textures/entity/"+(kind==io.github.riveyder.shahed.entity.AircraftKind.SHAHED?"drone":kind.id)+".png");
+        model=switch(kind){
+            case SHAHED->new DroneModel(context.bakeLayer(DroneModel.LAYER));
+            case QUAD->new io.github.riveyder.shahed.client.model.FleetModel(context.bakeLayer(io.github.riveyder.shahed.client.model.FleetModel.QUAD),false,true);
+            case CONTACT->new io.github.riveyder.shahed.client.model.FleetModel(context.bakeLayer(io.github.riveyder.shahed.client.model.FleetModel.CONTACT),false,false);
+            case JET->new io.github.riveyder.shahed.client.model.FleetModel(context.bakeLayer(io.github.riveyder.shahed.client.model.FleetModel.JET),true,false);
+        };
+        shadowRadius=kind==io.github.riveyder.shahed.entity.AircraftKind.SHAHED?1.65F:kind.hover?.65F:1;
     }
 
     @Override
@@ -39,7 +46,8 @@ public final class DroneRenderer extends EntityRenderer<DroneEntity, DroneRender
     @Override
     public void extractRenderState(DroneEntity entity, DroneRenderState state, float tickProgress) {
         super.extractRenderState(entity, state, tickProgress);
-        state.tint=entity.getTint();
+        state.tint=entity.kind()==io.github.riveyder.shahed.entity.AircraftKind.SHAHED?entity.getTint():-1;
+        state.loaded=entity.hasPayload();
         state.propellerAngle=entity.getPropellerAngle(tickProgress);
         state.yaw = entity.getYRot(tickProgress);
         state.pitch = entity.getXRot(tickProgress);
@@ -57,7 +65,7 @@ public final class DroneRenderer extends EntityRenderer<DroneEntity, DroneRender
         poses.scale(-1.0F, -1.0F, 1.0F);
         poses.translate(0.0F, -1.5F, 0.0F);
         collector.order(0).submitModel(model, state, poses,
-                RenderTypes.entityCutout(TEXTURE), state.lightCoords,
+                RenderTypes.entityCutout(texture), state.lightCoords,
                 OverlayTexture.NO_OVERLAY, state.tint, null, state.outlineColor, null);
         poses.popPose();
         super.submit(state, poses, collector, camera);

@@ -73,6 +73,7 @@ public final class FpvController {
 
     public static boolean acceptsReplay(UUID id) { return id.equals(sessionId); }
 
+    public static String aircraftCategoryLabel(){return drone==null?"SHAHED":drone.kind().label;}
     public static String aircraftLabel(){return drone==null?"AIRCRAFT":drone.kind().label+(drone.kind()==io.github.riveyder.shahed.entity.AircraftKind.QUAD?(drone.hasPayload()?" / LOADED":" / EMPTY"):"")+(drone.isNonDestructive()?" / SAFE":"");}
     public static FpvSettings settings() { return SETTINGS; }
 

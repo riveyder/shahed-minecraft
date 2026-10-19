@@ -86,7 +86,8 @@ public final class ReplayController {
         stop(false);
         level=client.level;mode=speed;cameraPreset=preset;cursor=0;impactShown=false;
         previousCamera=client.getCameraEntity();previousPerspective=client.options.getCameraType();
-        ghost=new DroneEntity(ModEntities.DRONE,level);
+        ghost=new DroneEntity(io.github.riveyder.shahed.entity.AircraftKind.byId(recording.aircraft()).type(),level);
+        ghost.setReplayPayload(recording.loaded());
         int id=Integer.MIN_VALUE+100;
         while(level.getEntity(id)!=null) id++;
         ghost.setId(id);
