@@ -73,6 +73,7 @@ public final class FpvController {
 
     public static boolean acceptsReplay(UUID id) { return id.equals(sessionId); }
 
+    public static String aircraftLabel(){return drone==null?"AIRCRAFT":drone.kind().label+(drone.kind()==io.github.riveyder.shahed.entity.AircraftKind.QUAD?(drone.hasPayload()?" / LOADED":" / EMPTY"):"")+(drone.isNonDestructive()?" / SAFE":"");}
     public static FpvSettings settings() { return SETTINGS; }
 
     public static boolean isActive() {
@@ -162,6 +163,8 @@ public final class FpvController {
 
         boolean canControl = drone != null && client.gui.screen() == null && client.gui.overlay() == null
                 && client.isWindowActive() && client.mouseHandler.isMouseGrabbed();
+        if(FpvKeys.RELEASE_PAYLOAD.consumeClick()&&canControl&&ClientPlayNetworking.canSend(io.github.riveyder.shahed.network.PayloadReleasePayload.TYPE))
+            ClientPlayNetworking.send(new io.github.riveyder.shahed.network.PayloadReleasePayload(sessionId,droneUuid));
         DroneInput input;
         if (canControl) {
             float yaw = axis(FpvKeys.YAW_RIGHT.isDown(), FpvKeys.YAW_LEFT.isDown())

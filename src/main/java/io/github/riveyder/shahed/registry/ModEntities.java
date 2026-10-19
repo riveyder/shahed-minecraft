@@ -33,6 +33,11 @@ public final class ModEntities {
                 .sized(width,height).eyeHeight(eye).clientTrackingRange(12).updateInterval(1).build(key));
     }
 
+    private static final ResourceKey<EntityType<?>> PAYLOAD_KEY=ResourceKey.create(Registries.ENTITY_TYPE,ShahedMod.id("arcade_payload"));
+    public static final EntityType<io.github.riveyder.shahed.entity.PayloadEntity> PAYLOAD=Registry.register(
+            BuiltInRegistries.ENTITY_TYPE,PAYLOAD_KEY,EntityType.Builder.<io.github.riveyder.shahed.entity.PayloadEntity>of(
+                    io.github.riveyder.shahed.entity.PayloadEntity::new,MobCategory.MISC).sized(.35F,.3F).clientTrackingRange(10).updateInterval(1).build(PAYLOAD_KEY));
+
     private ModEntities() {
     }
 

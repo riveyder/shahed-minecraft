@@ -27,7 +27,7 @@ public final class DroneExplosions {
     private static final java.util.Map<ServerLevel,long[]> BUDGETS=new java.util.WeakHashMap<>();
 
     public static int explode(ServerLevel level,Entity source,ServerPlayer owner,Vec3 position,DroneConfig.Settings raw) {
-        if(source instanceof DroneEntity drone && drone.isTraining()) return 0;
+        if(source instanceof DroneEntity drone && drone.isNonDestructive()) return 0;
         var policy=raw.sanitized();
         boolean permitted=DroneExplosionProtection.ALLOW.invoker().allow(level,owner,BlockPos.containing(position));
         boolean gameplay=permitted && level.getGameRules().get(GameRules.TNT_EXPLODES);

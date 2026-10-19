@@ -62,6 +62,36 @@ public final class DroneEntity extends Entity {
         if(target==0&&propellerSpeed<.001F)propellerSpeed=0;
         propellerAngle=previousPropellerAngle+(oldSpeed+propellerSpeed)*.5F;
     }
+    private static final EntityDataAccessor<Boolean> PAYLOAD = SynchedEntityData.defineId(DroneEntity.class,EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> RACE_SAFE = SynchedEntityData.defineId(DroneEntity.class,EntityDataSerializers.BOOLEAN);
+    public boolean hasPayload(){return entityData.get(PAYLOAD);}
+    public boolean isRaceSafe(){return entityData.get(RACE_SAFE);}
+    public boolean isNonDestructive(){return isTraining()||isRaceSafe();}
+    public boolean canRace(){return !hasPayload()&&(isTraining()||kind()!=AircraftKind.SHAHED);}
+    public void makeRaceSafe(){if(!level().isClientSide())entityData.set(RACE_SAFE,true);}
+    /** Safety remains latched after a race, even on disconnect, until a landed owner explicitly arms it. */
+    public boolean rearm(net.minecraft.server.level.ServerPlayer player){
+        if(!landedOwner(player))return false;entityData.set(RACE_SAFE,false);return true;
+    }
+    private boolean landedOwner(net.minecraft.server.level.ServerPlayer player){
+        return !destroyed&&!isRemoved()&&player.level()==level()&&player.isAlive()&&!player.isSpectator()
+                &&getOwnerUuid().filter(player.getUUID()::equals).isPresent()&&player.distanceToSqr(this)<36
+                &&onGround()&&getDeltaMovement().lengthSqr()<.0064&&!isFlying()
+                &&!io.github.riveyder.shahed.control.DroneSessions.isControlling(player);
+    }
+    public boolean attachPayload(net.minecraft.server.level.ServerPlayer player,net.minecraft.world.item.ItemStack stack){
+        if(kind()!=AircraftKind.QUAD||hasPayload()||!landedOwner(player)||isRaceSafe()||!stack.is(io.github.riveyder.shahed.registry.ModItems.PAYLOAD))return false;
+        entityData.set(PAYLOAD,true);stack.shrink(1);needsSync=true;return true;
+    }
+    public boolean releasePayload(net.minecraft.server.level.ServerPlayer player){
+        if(kind()!=AircraftKind.QUAD||!hasPayload()||isNonDestructive()||!isFlying()||onGround()||destroyed||isRemoved()
+                ||!getOwnerUuid().filter(player.getUUID()::equals).isPresent()||!(level() instanceof ServerLevel server))return false;
+        // Clear before spawning; a failed insertion restores attachment, never an inventory item.
+        entityData.set(PAYLOAD,false);
+        if(!PayloadEntity.release(server,this,player)){entityData.set(PAYLOAD,true);return false;}
+        needsSync=true;return true;
+    }
+    public void setReplayPayload(boolean loaded){if(level().isClientSide())entityData.set(PAYLOAD,loaded&&kind()==AircraftKind.QUAD);}
     private float health = 10.0F;
     private boolean destroyed;
     private io.github.riveyder.shahed.replay.ReplayImpact replayImpact;
@@ -173,6 +203,50 @@ public final class DroneEntity extends Entity {
             flightTicks++;
         }
         DroneInput input = isFlying() && ++inputAge <= 10 ? control : DroneInput.IDLE;
+        Vec3 velocity=kind()==AircraftKind.SHAHED?shahedVelocity(input):fleetVelocity(input);
+        AABB sweptBounds = getBoundingBox().expandTowards(velocity);
+        if (!(level() instanceof ServerLevel serverLevel)) return;
+        if (!areChunksLoaded(serverLevel, sweptBounds)) {
+            // Remote view tickets load ahead. Preserve momentum during a loading delay;
+            // querying collisions here would synchronously generate terrain on the tick thread.
+            setDeltaMovement(velocity);
+            return;
+        }
+        if (!level().getWorldBorder().isWithinBounds(sweptBounds)) {
+            velocity = new Vec3(0, velocity.y, 0);
+        }
+        int maximumY = level().dimensionType().minY() + level().dimensionType().height();
+        if (sweptBounds.maxY > maximumY && velocity.y > 0) {
+            velocity = new Vec3(velocity.x, 0, velocity.z);
+        }
+        Vec3 before = position();
+        setDeltaMovement(velocity);
+        move(MoverType.SELF, velocity);
+        Vec3 actual = position().subtract(before);
+        // Movement clipping identifies contact axes, NOT impact speed. The untravelled
+        // distance depends on where within this tick the surface was hit and can be tiny
+        // even at full speed. Use the pre-contact velocity on those axes instead.
+        Vec3 impactVelocity = new Vec3(
+                Math.abs(actual.x - velocity.x) > COLLISION_EPSILON ? velocity.x : 0,
+                Math.abs(actual.y - velocity.y) > COLLISION_EPSILON ? velocity.y : 0,
+                Math.abs(actual.z - velocity.z) > COLLISION_EPSILON ? velocity.z : 0);
+        setDeltaMovement(velocity.subtract(impactVelocity));
+        double impact = impactVelocity.length();
+        // A fatal collision must not depend on accumulated chip damage or its cooldown.
+        if (!isNonDestructive() && impact >= (kind()==AircraftKind.QUAD?.75:CRASH_SPEED)) {
+            destroy(collisionPosition(impactVelocity));
+            return;
+        }
+        if (impact > 0.18 && impactCooldown == 0) {
+            impactCooldown = 8;
+            serverLevel.playSound(null,getX(),getY(),getZ(),
+                    io.github.riveyder.shahed.registry.ModSounds.IMPACT,net.minecraft.sounds.SoundSource.NEUTRAL,1,1);
+            if(!isNonDestructive() && !(kind().hover&&onGround()&&impact<.35)) hurtServer(serverLevel,damageSources().flyIntoWall(),(float)((impact-0.18)*26));
+        }
+        needsSync = true;
+    }
+
+    private Vec3 shahedVelocity(DroneInput input) {
         Vec3 oldVelocity = getDeltaMovement();
         double airspeed = oldVelocity.length();
 
@@ -225,46 +299,45 @@ public final class DroneEntity extends Entity {
         if (velocity.lengthSqr() > MAX_SPEED * MAX_SPEED) {
             velocity = velocity.normalize().scale(MAX_SPEED);
         }
-        AABB sweptBounds = getBoundingBox().expandTowards(velocity);
-        if (!(level() instanceof ServerLevel serverLevel)) return;
-        if (!areChunksLoaded(serverLevel, sweptBounds)) {
-            // Remote view tickets load ahead. Preserve momentum during a loading delay;
-            // querying collisions here would synchronously generate terrain on the tick thread.
-            setDeltaMovement(velocity);
-            return;
+        return velocity;
+    }
+
+    private Vec3 fleetVelocity(DroneInput input){
+        Vec3 old=getDeltaMovement();double speed=old.length();boolean powered=isFlying();
+        if(kind().hover){
+            yawVelocity=Mth.lerp(.28F,yawVelocity,input.yaw()*7);
+            pitchVelocity=Mth.lerp(.22F,pitchVelocity,input.pitch()*4);
+            setYRot(Mth.wrapDegrees(getYRot()+yawVelocity));
+            setXRot(Mth.clamp(getXRot()+pitchVelocity,-55,55));
+            entityData.set(ROLL,Mth.lerp(.22F,getRoll(),-input.strafe()*28-input.yaw()*8));
+            double yaw=Math.toRadians(getYRot());
+            Vec3 forward=new Vec3(-Math.sin(yaw),0,Math.cos(yaw)),right=new Vec3(-Math.cos(yaw),0,-Math.sin(yaw));
+            double gain=kind()==AircraftKind.CONTACT?.15:.12;
+            Vec3 motion=old.scale(Math.exp(-(input.brake()?.36:powered?.075:.025)*DroneConfig.get().dragMultiplier()));
+            if(powered){
+                motion=motion.add(forward.scale(input.forward()*gain)).add(right.scale(input.strafe()*gain))
+                        .add(0,input.vertical()*.10-old.y*.14,0);
+            }else motion=motion.add(0,-.035,0);
+            float desired=powered?Math.min(1,.42F+.35F*Math.max(Math.abs(input.forward()),Math.abs(input.strafe()))+.23F*Math.abs(input.vertical())):0;
+            throttle=Mth.lerp(.2F,throttle,desired);entityData.set(THROTTLE,Math.round(throttle*100)/100F);
+            return motion.lengthSqr()>maxSpeed()*maxSpeed()?motion.normalize().scale(maxSpeed()):motion;
         }
-        if (!level().getWorldBorder().isWithinBounds(sweptBounds)) {
-            velocity = new Vec3(0, velocity.y, 0);
-        }
-        int maximumY = level().dimensionType().minY() + level().dimensionType().height();
-        if (sweptBounds.maxY > maximumY && velocity.y > 0) {
-            velocity = new Vec3(velocity.x, 0, velocity.z);
-        }
-        Vec3 before = position();
-        setDeltaMovement(velocity);
-        move(MoverType.SELF, velocity);
-        Vec3 actual = position().subtract(before);
-        // Movement clipping identifies contact axes, NOT impact speed. The untravelled
-        // distance depends on where within this tick the surface was hit and can be tiny
-        // even at full speed. Use the pre-contact velocity on those axes instead.
-        Vec3 impactVelocity = new Vec3(
-                Math.abs(actual.x - velocity.x) > COLLISION_EPSILON ? velocity.x : 0,
-                Math.abs(actual.y - velocity.y) > COLLISION_EPSILON ? velocity.y : 0,
-                Math.abs(actual.z - velocity.z) > COLLISION_EPSILON ? velocity.z : 0);
-        setDeltaMovement(velocity.subtract(impactVelocity));
-        double impact = impactVelocity.length();
-        // A fatal collision must not depend on accumulated chip damage or its cooldown.
-        if (!isTraining() && impact >= CRASH_SPEED) {
-            destroy(collisionPosition(impactVelocity));
-            return;
-        }
-        if (impact > 0.18 && impactCooldown == 0) {
-            impactCooldown = 8;
-            serverLevel.playSound(null,getX(),getY(),getZ(),
-                    io.github.riveyder.shahed.registry.ModSounds.IMPACT,net.minecraft.sounds.SoundSource.NEUTRAL,1,1);
-            if(!isTraining()) hurtServer(serverLevel,damageSources().flyIntoWall(),(float)((impact-0.18)*26));
-        }
-        needsSync = true;
+        // Jet: speed-dependent authority, banked turns, thrust and inertial sideslip; never hover.
+        float authority=(float)Math.clamp(speed/1.2,.12,1);
+        yawVelocity=Mth.lerp(.1F,yawVelocity,input.yaw()*2.8F*authority);
+        float demand=input.pitch()*2.4F-input.vertical()*1.8F;
+        if(!powered&&!onGround())demand=Mth.clamp((32-getXRot())*.025F,-1,1);
+        pitchVelocity=Mth.lerp(.09F,pitchVelocity,demand*authority);
+        entityData.set(ROLL,Mth.lerp(.08F,getRoll(),-input.strafe()*60-input.yaw()*18));
+        setYRot(Mth.wrapDegrees(getYRot()+yawVelocity-getRoll()*.022F*authority));
+        setXRot(Mth.clamp(getXRot()+pitchVelocity,-70,70));
+        double yaw=Math.toRadians(getYRot()),pitch=Math.toRadians(getXRot());
+        Vec3 forward=new Vec3(-Math.sin(yaw)*Math.cos(pitch),-Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
+        float desired=powered&&!input.brake()?Math.max(0,input.forward()):0;
+        throttle=Mth.lerp(desired>throttle?.14F:.06F,throttle,desired);entityData.set(THROTTLE,Math.round(throttle*100)/100F);
+        Vec3 motion=old.scale(Math.exp(-(.012+(input.brake()?.12:0)+Math.max(0,-input.forward())*.07)))
+                .add(forward.scale(throttle*.15)).add(0,-.032+Math.min(.035,Math.max(0,old.dot(forward))*.024),0);
+        return motion.lengthSqr()>maxSpeed()*maxSpeed()?motion.normalize().scale(maxSpeed()):motion;
     }
 
     /** Vanilla sweeps these entity boxes together with block voxel shapes in move(). */
@@ -306,7 +379,7 @@ public final class DroneEntity extends Entity {
         };
     }
 
-    private static boolean areChunksLoaded(ServerLevel level, AABB bounds) {
+    public static boolean areChunksLoaded(ServerLevel level, AABB bounds) {
         for (int x = Mth.floor(bounds.minX) >> 4; x <= Mth.floor(Math.nextDown(bounds.maxX)) >> 4; x++) {
             for (int z = Mth.floor(bounds.minZ) >> 4; z <= Mth.floor(Math.nextDown(bounds.maxZ)) >> 4; z++) {
                 if (!level.getChunkSource().hasChunk(x, z)) {
@@ -365,6 +438,8 @@ public final class DroneEntity extends Entity {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(PAYLOAD,false);
+        builder.define(RACE_SAFE,false);
         builder.define(ROLL, 0.0F);
         builder.define(TRAINING,false);
         builder.define(PAINT,0);
@@ -381,6 +456,8 @@ public final class DroneEntity extends Entity {
                 return Optional.empty();
             }
         }).orElse(null);
+        entityData.set(PAYLOAD,kind()==AircraftKind.QUAD&&input.getBooleanOr("Payload",false));
+        entityData.set(RACE_SAFE,input.getBooleanOr("RaceSafe",false));
         setTraining(input.getBooleanOr("Training",false));
         setPaint(input.getIntOr("Paint",0));
         float savedHealth = input.getFloatOr("Health", 10.0F);
@@ -400,6 +477,8 @@ public final class DroneEntity extends Entity {
         if (ownerUuid != null) {
             output.putString("Owner", ownerUuid.toString());
         }
+        output.putBoolean("Payload",hasPayload());
+        output.putBoolean("RaceSafe",isRaceSafe());
         output.putBoolean("Training",isTraining());
         output.putInt("Paint",entityData.get(PAINT));
         output.putFloat("Health", health);
@@ -438,11 +517,11 @@ public final class DroneEntity extends Entity {
         destroyed=true;
         var policy=io.github.riveyder.shahed.control.DroneConfig.get();
         // Keep the existing replay visual protocol (0..12); gameplay uses the full policy below.
-        replayImpact=new io.github.riveyder.shahed.replay.ReplayImpact(explosionPosition,!isTraining(),policy.particles(),policy.sound(),Math.min(12,policy.explosionPower()));
+        replayImpact=new io.github.riveyder.shahed.replay.ReplayImpact(explosionPosition,!isNonDestructive()&&kind()!=AircraftKind.QUAD,policy.particles(),policy.sound(),Math.min(12,policy.explosionPower()));
         recordFrame();
         io.github.riveyder.shahed.control.DroneSessions.destroyed(this);
         stopControl();
-        if(isTraining()) { discard();return true; }
+        if(isNonDestructive()||kind()==AircraftKind.QUAD) { discard();return true; }
         var owner=ownerUuid==null?null:server.getServer().getPlayerList().getPlayer(ownerUuid);
         io.github.riveyder.shahed.control.DroneExplosions.explode(server,this,owner,explosionPosition,policy);
         discard();

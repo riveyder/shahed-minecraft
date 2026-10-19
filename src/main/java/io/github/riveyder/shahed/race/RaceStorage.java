@@ -19,7 +19,7 @@ public final class RaceStorage {
         try {
             if(Files.size(file)>16*1024*1024)throw new IllegalArgumentException("Race data too large");
             var root=JsonParser.parseString(Files.readString(file)).getAsJsonObject();
-            if(root.get("version").getAsInt()!=1)throw new IllegalArgumentException("Race schema version");
+            if(root.get("version").getAsInt()!=1&&root.get("version").getAsInt()!=2)throw new IllegalArgumentException("Race schema version");
             var courses=root.getAsJsonArray("courses");
             if(courses.size()>RaceCourse.MAX_COURSES)throw new IllegalArgumentException("Too many courses");
             for(var row:courses) {var course=JSON.fromJson(row,RaceCourse.class);
@@ -32,7 +32,7 @@ public final class RaceStorage {
     public boolean save(Map<String,RaceCourse> courses) {
         if(!writable||courses.size()>RaceCourse.MAX_COURSES)return false;
         try {
-            var root=new JsonObject();root.addProperty("version",1);root.add("courses",JSON.toJsonTree(courses.values()));
+            var root=new JsonObject();root.addProperty("version",2);root.add("courses",JSON.toJsonTree(courses.values()));
             var tmp=file.resolveSibling(file.getFileName()+".tmp");Files.createDirectories(file.getParent());
             Files.writeString(tmp,JSON.toJson(root)+System.lineSeparator());
             try {Files.move(tmp,file,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);}

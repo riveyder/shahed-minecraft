@@ -44,9 +44,10 @@ public final class DroneRacing {
         s.requests.put(p.getUUID(),now);
         switch(request.action()){case 0->catalog(p);case 1->join(p,request.course());case 2->cancel(p,"cancelled");case 3->preview(p,request.course());default->fail(p,"invalid");}
     }
+    private static String category(ServerPlayer p){var aircraft=RaceAircraft.controlled(p);return aircraft==null?"shahed":aircraft.category();}
     public static void catalog(ServerPlayer p){
         var rows=state(p).courses.values().stream().filter(c->c.enabled()&&c.dimension().equals(dimension(p)))
-                .sorted(Comparator.comparing(RaceCourse::id)).map(c->new RaceCatalogPayload.Entry(c.id(),c.kind(),c.gates().size(),c.best(p.getUUID()),c.recordTime())).toList();
+                .sorted(Comparator.comparing(RaceCourse::id)).map(c->new RaceCatalogPayload.Entry(c.id(),c.kind(),c.gates().size(),c.best(p.getUUID(),category(p)),c.recordTime(category(p)))).toList();
         send(p,new RaceCatalogPayload(rows));
     }
     public static int list(ServerPlayer p){
@@ -55,10 +56,11 @@ public final class DroneRacing {
         for(var c:list)message(p,"list_row",c.id(),Component.translatable("race.kind."+c.kind()),c.gates().size(),c.dimension(),Component.translatable(c.enabled()?"race.enabled":"race.disabled"));
         catalog(p);return list.size();
     }
-    public static int records(ServerPlayer p,String id){
+    public static int records(ServerPlayer p,String id){return records(p,id,category(p));}
+    public static int records(ServerPlayer p,String id,String category){
         var c=state(p).courses.get(id);if(c==null||!c.enabled()&&!DroneSettingsAuthority.canEdit(p))return fail(p,"not_found");
-        message(p,"records",id,time(c.best(p.getUUID())),time(c.recordTime()));
-        int rank=0;for(var r:c.records().entrySet().stream().sorted(Comparator.<Map.Entry<String,RaceCourse.Best>>comparingLong(e->e.getValue().millis()).thenComparing(Map.Entry::getKey)).limit(10).toList())
+        message(p,"records",id+" / "+category,time(c.best(p.getUUID(),category)),time(c.recordTime(category)));
+        int rank=0;for(var r:c.records().entrySet().stream().filter(e->RaceCourse.matchesCategory(e.getKey(),category)).sorted(Comparator.<Map.Entry<String,RaceCourse.Best>>comparingLong(e->e.getValue().millis()).thenComparing(Map.Entry::getKey)).limit(10).toList())
             message(p,"record_row",++rank,r.getValue().name(),time(r.getValue().millis()));
         return 1;
     }
@@ -68,6 +70,7 @@ public final class DroneRacing {
         if(!c.dimension().equals(dimension(p)))return fail(p,"dimension");
         var aircraft=RaceAircraft.controlled(p);if(aircraft==null||!aircraft.valid(p))return fail(p,"training_required");
         if(p.connection!=null&&!ServerPlayNetworking.canSend(p,RaceStatePayload.TYPE))return fail(p,"incompatible");
+        aircraft.beginRace();
         var e=new Entry(p,aircraft,new CourseRun(c,aircraft.position()),p.level().getServer().getTickCount());
         s.runs.put(p.getUUID(),e);update(s,e,0,"armed",true);message(p,"armed",id);return 1;
     }
@@ -75,7 +78,7 @@ public final class DroneRacing {
         var s=state(p);if(s.runs.containsKey(p.getUUID()))return fail(p,"already_running");
         var c=s.courses.get(id);if(c==null||!c.enabled()&&!DroneSettingsAuthority.canEdit(p))return fail(p,"not_found");
         if(!c.dimension().equals(dimension(p)))return fail(p,"dimension");
-        send(p,new RaceStatePayload(c.id(),c.kind(),5,0,c.gates().size(),0,c.best(p.getUUID()),c.recordTime(),"preview",c.gates()));return 1;
+        send(p,new RaceStatePayload(c.id(),c.kind(),5,0,c.gates().size(),0,c.best(p.getUUID(),category(p)),c.recordTime(category(p)),"preview",c.gates()));return 1;
     }
     public static int cancel(ServerPlayer p,String reason){
         var s=state(p);var e=s.runs.remove(p.getUUID());
@@ -88,12 +91,12 @@ public final class DroneRacing {
     }
     private static void update(State s,Entry e,int status,String reason,boolean geometry){
         var c=s.courses.getOrDefault(e.run.course.id(),e.run.course);
-        send(e.player,new RaceStatePayload(c.id(),c.kind(),status,e.run.next(),c.gates().size(),e.run.elapsed(),c.best(e.player.getUUID()),c.recordTime(),reason,geometry?c.gates():List.of()));
+        send(e.player,new RaceStatePayload(c.id(),c.kind(),status,e.run.next(),c.gates().size(),e.run.elapsed(),c.best(e.player.getUUID(),e.aircraft.category()),c.recordTime(e.aircraft.category()),reason,geometry?c.gates():List.of()));
     }
     private static void finish(State s,Entry e){
         var c=s.courses.get(e.run.course.id());long time=e.run.elapsed();
-        if(c!=null&&(c.best(e.player.getUUID())==0||time<c.best(e.player.getUUID()))){
-            var records=new HashMap<>(c.records());String key=e.player.getUUID().toString();
+        if(c!=null&&(c.best(e.player.getUUID(),e.aircraft.category())==0||time<c.best(e.player.getUUID(),e.aircraft.category()))){
+            var records=new HashMap<>(c.records());String key=RaceCourse.recordKey(e.player.getUUID(),e.aircraft.category());
             if(records.size()<RaceCourse.MAX_RECORDS||records.containsKey(key)){
                 String name=e.player.getName().getString();records.put(key,new RaceCourse.Best(name.substring(0,Math.min(32,name.length())),time));
                 var replacement=new RaceCourse(c.id(),c.dimension(),c.kind(),c.enabled(),c.gates(),records);

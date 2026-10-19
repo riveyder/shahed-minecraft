@@ -20,7 +20,7 @@ public final class RaceCommands {
             .then(Commands.literal("cancel").executes(c->DroneRacing.cancel(c.getSource().getPlayerOrException(),"cancelled")))
             .then(Commands.literal("join").then(Commands.argument("course",StringArgumentType.word()).executes(c->DroneRacing.join(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"course")))))
             .then(Commands.literal("preview").then(Commands.argument("course",StringArgumentType.word()).executes(c->DroneRacing.preview(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"course")))))
-            .then(Commands.literal("records").then(Commands.argument("course",StringArgumentType.word()).executes(c->DroneRacing.records(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"course")))))
+            .then(recordsTree())
             .then(Commands.literal("save").requires(RaceCommands::admin).executes(c->DroneRacing.save(c.getSource().getPlayerOrException())))
             .then(Commands.literal("edit").requires(RaceCommands::admin).then(Commands.argument("course",StringArgumentType.word()).executes(c->DroneRacing.edit(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"course")))))
             .then(Commands.literal("delete").requires(RaceCommands::admin).then(Commands.argument("course",StringArgumentType.word()).executes(c->DroneRacing.delete(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"course")))))
@@ -39,6 +39,12 @@ public final class RaceCommands {
         gates.then(Commands.literal("remove").then(Commands.argument("index",IntegerArgumentType.integer(1,64))
                 .executes(c->DroneRacing.gate(c.getSource().getPlayerOrException(),"remove",IntegerArgumentType.getInteger(c,"index"),0))));
         return root.then(gates);
+    }
+    private static LiteralArgumentBuilder<CommandSourceStack> recordsTree(){
+        var name=Commands.argument("course",StringArgumentType.word()).executes(c->DroneRacing.records(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"course")));
+        for(var kind:io.github.riveyder.shahed.entity.AircraftKind.values())name.then(Commands.literal(kind.id)
+                .executes(c->DroneRacing.records(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"course"),kind.id)));
+        return Commands.literal("records").then(name);
     }
     private RaceCommands(){}
 }

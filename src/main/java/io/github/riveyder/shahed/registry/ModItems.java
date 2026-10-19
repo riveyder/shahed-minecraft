@@ -27,6 +27,11 @@ public final class ModItems {
             equipmentProperties("fpv_goggles").component(DataComponents.EQUIPPABLE,
                     Equippable.builder(EquipmentSlot.HEAD).setDamageOnHurt(false).build()));
 
+    public static final Item QUAD=register("quad",p->new DroneItem(p,false,io.github.riveyder.shahed.entity.AircraftKind.QUAD),equipmentProperties("quad"));
+    public static final Item CONTACT_QUAD=register("contact_quad",p->new DroneItem(p,false,io.github.riveyder.shahed.entity.AircraftKind.CONTACT),equipmentProperties("contact_quad"));
+    public static final Item JET=register("jet",p->new DroneItem(p,false,io.github.riveyder.shahed.entity.AircraftKind.JET),equipmentProperties("jet"));
+    public static final Item PAYLOAD=register("arcade_payload",Item::new,equipmentProperties("arcade_payload"));
+
     public static final ResourceKey<CreativeModeTab> EQUIPMENT_TAB_KEY =
             ResourceKey.create(Registries.CREATIVE_MODE_TAB, ShahedMod.id("equipment"));
 
@@ -38,6 +43,7 @@ public final class ModItems {
                 output.accept(TRAINING_DRONE);
                 output.accept(CONTROLLER);
                 output.accept(FPV_GOGGLES);
+                output.accept(QUAD);output.accept(CONTACT_QUAD);output.accept(JET);output.accept(PAYLOAD);
             })
             .build();
 

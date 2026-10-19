@@ -192,6 +192,14 @@ public final class DroneSessions {
         return true;
     }
 
+    public static void releasePayload(ServerPlayer player,io.github.riveyder.shahed.network.PayloadReleasePayload payload){
+        var session=PLAYERS.get(player.getUUID());
+        if(session==null||session.spectator||!session.id.equals(payload.sessionId())||!session.drone.getUUID().equals(payload.aircraftId())
+                ||invalidReason(session)!=null||session.packetsThisTick>=16)return;
+        session.packetsThisTick++;
+        message(player,Component.translatable(session.drone.releasePayload(player)?"fleet.payload.released":"fleet.payload.denied"));
+    }
+
     public static void exit(ServerPlayer player, UUID sessionId) {
         if (sessionId(player).filter(sessionId::equals).isPresent()) {
             end(player, "exit");

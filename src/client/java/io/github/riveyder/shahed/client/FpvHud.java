@@ -30,6 +30,7 @@ public final class FpvHud {
         String connection=target==null?"ACQUIRING":now-received>2_000_000_000L?"TELEMETRY HOLD":spectator?"OBSERVER / LINK":"LINK ACTIVE";
         text(g,connection,settings.minimalHud?16:334,20,c);
         if(target==null) {g.pose().popMatrix();return;}
+        centered(g,FpvController.aircraftLabel(),240,8,c);
         if(settings.minimalHud) {
             text(g,String.format(Locale.ROOT,"SPD %.1f m/s",speed),16,239,c);
             text(g,String.format(Locale.ROOT,"ALT %.1f m",altitude),350,239,c);

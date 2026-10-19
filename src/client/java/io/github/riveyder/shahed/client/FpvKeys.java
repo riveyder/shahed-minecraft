@@ -20,6 +20,7 @@ public final class FpvKeys {
     public static final KeyMapping YAW_RIGHT = key("yaw_right", GLFW.GLFW_KEY_RIGHT);
     public static final KeyMapping PITCH_UP = key("pitch_up", GLFW.GLFW_KEY_UP);
     public static final KeyMapping PITCH_DOWN = key("pitch_down", GLFW.GLFW_KEY_DOWN);
+    public static final KeyMapping RELEASE_PAYLOAD = key("release_payload", GLFW.GLFW_KEY_G);
     public static final KeyMapping EXIT = key("exit", GLFW.GLFW_KEY_R);
     // O opens Minecraft 26.2's friends list; keep the default usable without a conflict.
     public static final KeyMapping SETTINGS = key("settings", GLFW.GLFW_KEY_K);
@@ -35,10 +36,11 @@ public final class FpvKeys {
     }
 
     public static boolean isSessionAction(KeyMapping mapping) {
-        return mapping == EXIT || mapping == SETTINGS || mapping == HUD_MODE;
+        return mapping == EXIT || mapping == SETTINGS || mapping == HUD_MODE || mapping == RELEASE_PAYLOAD;
     }
 
     public static void clearSessionClicks() {
+        while (RELEASE_PAYLOAD.consumeClick()) { }
         while (EXIT.consumeClick()) { }
         while (SETTINGS.consumeClick()) { }
         while (HUD_MODE.consumeClick()) { }

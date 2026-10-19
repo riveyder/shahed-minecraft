@@ -31,6 +31,18 @@ public final class ControllerItem extends Item {
     public static void registerInteractions() {
         UseEntityCallback.EVENT.register((player, level, hand, target, hit) -> {
             ItemStack stack = player.getItemInHand(hand);
+            if(target instanceof DroneEntity aircraft && (stack.is(ModItems.PAYLOAD)||stack.isEmpty()&&player.isShiftKeyDown())){
+                if(!(player instanceof ServerPlayer pilot))return InteractionResult.SUCCESS;
+                if(stack.is(ModItems.PAYLOAD)){
+                    boolean ok=aircraft.attachPayload(pilot,stack);
+                    message(pilot,Component.translatable(ok?"fleet.payload.attached":"fleet.payload.attach_denied"));
+                    return ok?InteractionResult.SUCCESS:InteractionResult.FAIL;
+                }
+                if(aircraft.isRaceSafe()){
+                    boolean ok=aircraft.rearm(pilot);message(pilot,Component.translatable(ok?"fleet.armed":"fleet.arm_denied"));
+                    return ok?InteractionResult.SUCCESS:InteractionResult.FAIL;
+                }
+            }
             if (!(target instanceof DroneEntity drone) || !stack.is(ModItems.CONTROLLER)) {
                 return InteractionResult.PASS;
             }

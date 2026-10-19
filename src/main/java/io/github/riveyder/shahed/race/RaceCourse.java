@@ -15,10 +15,17 @@ public record RaceCourse(String id,String dimension,int kind,boolean enabled,Lis
             if(kind==1&&gates.get(i).radius()>2.5F)throw new IllegalArgumentException("Precision radius");
             if(i>0&&gates.get(i).center().distanceToSqr(gates.get(i-1).center())<4)throw new IllegalArgumentException("Adjacent gates too close");
         }
-        for(var key:records.keySet())UUID.fromString(key);
+        for(var key:records.keySet()){
+            var parts=key.split("@",-1);UUID.fromString(parts[0]);
+            if(parts.length>2||parts.length==2&&!Set.of("quad","contact_quad","jet").contains(parts[1]))throw new IllegalArgumentException("Record aircraft");
+        }
     }
-    public long best(UUID player) {var r=records.get(player.toString());return r==null?0:r.millis;}
-    public long recordTime() {return records.values().stream().mapToLong(Best::millis).min().orElse(0);}
+    public static String recordKey(UUID player,String category){return player+(category.equals("shahed")?"":"@"+category);}
+    public static boolean matchesCategory(String key,String category){return category.equals("shahed")?!key.contains("@"):key.endsWith("@"+category);}
+    public long best(UUID player){return best(player,"shahed");}
+    public long best(UUID player,String category){var r=records.get(recordKey(player,category));return r==null?0:r.millis;}
+    public long recordTime(){return recordTime("shahed");}
+    public long recordTime(String category){return records.entrySet().stream().filter(e->matchesCategory(e.getKey(),category)).mapToLong(e->e.getValue().millis()).min().orElse(0);}
     public boolean sameRoute(RaceCourse other) {return dimension.equals(other.dimension)&&kind==other.kind&&gates.equals(other.gates);}
     public record Best(String name,long millis) {
         public Best {if(name==null||name.length()>32||millis<1||millis>3_600_000)throw new IllegalArgumentException("Invalid record");}
