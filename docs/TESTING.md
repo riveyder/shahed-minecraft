@@ -1,3 +1,12 @@
+# Проверка версии 1.0.0 — release candidate
+
+Одна сборка без runtime-задач: **BUILD SUCCESSFUL**, 13 секунд.
+`docs/validate_fleet.py` — PASS; JAR: 84 ресурса, 17 OGG, 8 рецептов, новые классы.
+Старые звуки и формулы SHAHED сохранены. Minecraft, GameTests и мультиплеер не запускались.
+[Отчёт](V1.0.0_VERIFICATION.md), [ручная приёмка](FLEET.md#ручная-приёмка-release-candidate).
+Ниже результаты прежних версий.
+
+---
 # Проверка версии 0.9.0
 
 `gradlew.bat build -x check -x test -x runGameTest --offline` — **BUILD SUCCESSFUL**,

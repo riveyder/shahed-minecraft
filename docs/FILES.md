@@ -1,3 +1,13 @@
+# Дополнения 1.0.0
+
+- `entity/AircraftKind`, общая `DroneEntity` — отдельные типы с общими UUID/сеансами.
+- `entity/PayloadEntity`, `network/PayloadReleasePayload` — серверный одноразовый модуль.
+- `client/model/FleetModel`, `PayloadModel`, `renderer/PayloadRenderer` — новые модели.
+- `assets-work/{quad,contact_quad,jet}.bbmodel` — редактируемые исходники.
+- `docs/model/generate_fleet.py`, `generate_fleet_audio.py` — оригинальные активы.
+- `docs/validate_fleet.py` — лёгкая проверка JSON, моделей, звуков и локализации.
+- `docs/FLEET.md`, `ASSET_LICENSES.md`, `V1.0.0_VERIFICATION.md` — использование и границы проверки.
+
 # Дополнения 0.9.0
 
 - `race/RaceCourse`, `CourseRun` — маршруты, пересечение плоскостей и серверное время.
