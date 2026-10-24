@@ -2,6 +2,7 @@ package io.github.riveyder.shahed.registry;
 
 import io.github.riveyder.shahed.ShahedMod;
 import io.github.riveyder.shahed.item.DroneItem;
+import io.github.riveyder.shahed.item.ControllerItem;
 import java.util.List;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
@@ -19,11 +20,17 @@ import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.equipment.Equippable;
 
 public final class ModItems {
-    public static final Item DRONE = register("drone", DroneItem::new, prototypeProperties());
-    public static final Item CONTROLLER = register("controller", Item::new, prototypeProperties());
+    public static final Item DRONE = register("drone", DroneItem::new, equipmentProperties("drone"));
+    public static final Item TRAINING_DRONE = register("training_drone", properties -> new DroneItem(properties,true), equipmentProperties("training_drone"));
+    public static final Item CONTROLLER = register("controller", ControllerItem::new, equipmentProperties("controller"));
     public static final Item FPV_GOGGLES = register("fpv_goggles", Item::new,
-            prototypeProperties().component(DataComponents.EQUIPPABLE,
+            equipmentProperties("fpv_goggles").component(DataComponents.EQUIPPABLE,
                     Equippable.builder(EquipmentSlot.HEAD).setDamageOnHurt(false).build()));
+
+    public static final Item QUAD=register("quad",p->new DroneItem(p,false,io.github.riveyder.shahed.entity.AircraftKind.QUAD),equipmentProperties("quad"));
+    public static final Item CONTACT_QUAD=register("contact_quad",p->new DroneItem(p,false,io.github.riveyder.shahed.entity.AircraftKind.CONTACT),equipmentProperties("contact_quad"));
+    public static final Item JET=register("jet",p->new DroneItem(p,false,io.github.riveyder.shahed.entity.AircraftKind.JET),equipmentProperties("jet"));
+    public static final Item PAYLOAD=register("arcade_payload",Item::new,equipmentProperties("arcade_payload"));
 
     public static final ResourceKey<CreativeModeTab> EQUIPMENT_TAB_KEY =
             ResourceKey.create(Registries.CREATIVE_MODE_TAB, ShahedMod.id("equipment"));
@@ -33,17 +40,21 @@ public final class ModItems {
             .icon(() -> new ItemStack(DRONE))
             .displayItems((parameters, output) -> {
                 output.accept(DRONE);
+                output.accept(TRAINING_DRONE);
                 output.accept(CONTROLLER);
                 output.accept(FPV_GOGGLES);
+                output.accept(QUAD);output.accept(CONTACT_QUAD);output.accept(JET);output.accept(PAYLOAD);
             })
             .build();
 
     private ModItems() {
     }
 
-    private static Item.Properties prototypeProperties() {
+    private static Item.Properties equipmentProperties(String name) {
         return new Item.Properties().stacksTo(1).component(DataComponents.LORE,
-                new ItemLore(List.of(Component.translatable("item.shahed.stage_one"))));
+                new ItemLore(name.equals("controller")
+                        ?List.of(Component.translatable("item.shahed.controller.hint"),Component.translatable("item.shahed.controller.hint2"))
+                        :List.of(Component.translatable("item.shahed." + name + ".hint"))));
     }
 
     private static Item register(String path, Function<Item.Properties, Item> factory, Item.Properties properties) {

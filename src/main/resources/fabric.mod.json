@@ -3,19 +3,38 @@
   "id": "shahed",
   "version": "${version}",
   "name": "SHAHED.exe — FPV Mayhem",
-  "description": "ТОВ «КРИВІ РУКИ AEROSPACE». Stage 1: drone entity, equipment and creative tools. Flight and FPV are planned.",
-  "authors": ["riveyder"],
-  "contact": {"sources": "https://github.com/riveyder/minercaft-mods"},
-  "license": "MIT",
+  "description": "КРИВЫЕ РУКИ AEROSPACE. Server-authoritative FPV aircraft fleet, reusable quadcopter, arcade payloads, racing and cinematic effects.",
+  "authors": [
+    "riveyder"
+  ],
+  "contact": {
+    "sources": "https://github.com/riveyder/shahed-minecraft"
+  },
+  "license": [
+    "MIT",
+    "CC0-1.0",
+    "CC-BY-4.0"
+  ],
   "icon": "assets/shahed/icon.png",
   "environment": "*",
   "entrypoints": {
-    "main": ["io.github.riveyder.shahed.ShahedMod"],
-    "client": ["io.github.riveyder.shahed.client.ShahedClient"]
+    "main": [
+      "io.github.riveyder.shahed.ShahedMod"
+    ],
+    "client": [
+      "io.github.riveyder.shahed.client.ShahedClient"
+    ]
   },
+  "mixins": [
+    "shahed.mixins.json",
+    {
+      "config": "shahed.client.mixins.json",
+      "environment": "client"
+    }
+  ],
   "depends": {
     "fabricloader": ">=0.19.5",
-    "minecraft": "~26.2",
+    "minecraft": "26.2",
     "java": ">=25",
     "fabric-api": ">=0.161.0+26.2"
   }

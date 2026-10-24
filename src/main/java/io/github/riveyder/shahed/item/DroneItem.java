@@ -10,11 +10,13 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.phys.Vec3;
 
-/** Places a static prototype beside the clicked block; it never starts a flight session. */
+/** Places an owned drone beside the clicked block; piloting requires a separate controller session. */
 public final class DroneItem extends Item {
-    public DroneItem(Properties properties) {
-        super(properties);
-    }
+    private final boolean training;
+    private final io.github.riveyder.shahed.entity.AircraftKind kind;
+    public DroneItem(Properties properties) { this(properties,false); }
+    public DroneItem(Properties properties,boolean training) { this(properties,training,io.github.riveyder.shahed.entity.AircraftKind.SHAHED); }
+    public DroneItem(Properties properties,boolean training,io.github.riveyder.shahed.entity.AircraftKind kind) { super(properties);this.training=training;this.kind=kind; }
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
@@ -24,22 +26,25 @@ public final class DroneItem extends Item {
         }
 
         if (!(context.getLevel() instanceof ServerLevel level)) {
-            return player.getAbilities().instabuild ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+            return player.isSpectator()?InteractionResult.FAIL:InteractionResult.SUCCESS;
         }
 
-        if (!player.getAbilities().instabuild) {
-            player.sendOverlayMessage(Component.translatable("commands.shahed.creative_only"));
+        String denial=io.github.riveyder.shahed.control.DroneDeployment.denial(player);
+        if (denial!=null) {
+            player.sendOverlayMessage(Component.translatable(denial));
             return InteractionResult.FAIL;
         }
 
         BlockPos position = context.getClickedPos().relative(context.getClickedFace());
         if (!level.mayInteract(player, context.getClickedPos())
                 || !player.mayUseItemAt(position, context.getClickedFace(), context.getItemInHand())
-                || !DroneEntity.spawn(level, player, Vec3.atBottomCenterOf(position))) {
+                || !DroneEntity.spawn(level, player, Vec3.atBottomCenterOf(position),training,kind)) {
             player.sendOverlayMessage(Component.translatable("commands.shahed.spawn_blocked"));
             return InteractionResult.FAIL;
         }
 
+        // Consume only after a successful server spawn. Failed placement never loses the item.
+        if(!player.getAbilities().instabuild)context.getItemInHand().shrink(1);
         player.sendOverlayMessage(Component.translatable("commands.shahed.spawned"));
         return InteractionResult.SUCCESS;
     }

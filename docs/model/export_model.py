@@ -63,9 +63,9 @@ def export_blockbench(geometry):
         })
     model = {
         "meta": {"format_version": "4.10", "model_format": "free", "box_uv": False},
-        "name": "SHAHED.exe - stage 1 delta-wing prototype",
-        "model_identifier": "shahed_drone_stage_one",
-        "visible_box": [3, 2, 0],
+        "name": "SHAHED.exe - detailed fixed-wing FPV drone",
+        "model_identifier": "shahed_drone_stage_two_polish",
+        "visible_box": [5, 3, 0],
         "variable_placeholders": "",
         "resolution": {"width": geometry["texture_size"][0],
                        "height": geometry["texture_size"][1]},
@@ -142,13 +142,13 @@ def render_preview(geometry):
     figure = plt.figure(figsize=(16, 6), facecolor="#f2f5f6")
     ax = figure.add_subplot(131, projection="3d")
     ax.add_collection3d(Poly3DCollection(polygons, facecolors=colors, edgecolors="none"))
-    ax.add_collection3d(Poly3DCollection([[[-18,-19,0], [18,-19,0], [18,20,0], [-18,20,0]]],
+    ax.add_collection3d(Poly3DCollection([[[-30,-34,0], [30,-34,0], [30,34,0], [-30,34,0]]],
                                        facecolor="#dbe3e5", edgecolors="#b4c2c6", alpha=.4))
-    ax.quiver(0, 18, 0.2, 0, 6, 0, color="#267f78", arrow_length_ratio=.2)
-    ax.text(0, 24, 1, "Nose / +Z", color="#267f78")
-    ax.set(xlim=(-18, 18), ylim=(-20, 25), zlim=(0, 18),
+    ax.quiver(0, 31, 0.2, 0, 6, 0, color="#267f78", arrow_length_ratio=.2)
+    ax.text(0, 37, 1, "Nose / +Z", color="#267f78")
+    ax.set(xlim=(-30, 30), ylim=(-34, 39), zlim=(0, 22),
            xlabel="World X", ylabel="World Z (yaw 0)", zlabel="Height (pixels)")
-    ax.set_box_aspect((36,45,18))
+    ax.set_box_aspect((60,73,22))
     ax.view_init(elev=25, azim=-56)
     ax.set_title("Textured geometry preview")
 
@@ -160,11 +160,11 @@ def render_preview(geometry):
         color = texture[v0:v1, u0:u1, :3].mean(axis=(0, 1))
         top.add_patch(Rectangle((x, -z-dz), dx, dz, facecolor=color,
                                 edgecolor="#40565d", linewidth=.55))
-    top.annotate("Nose / world +Z", xy=(0,15.5), xytext=(0,20), ha="center",
+    top.annotate("Nose / world +Z", xy=(0,30), xytext=(0,36), ha="center",
                  arrowprops={"arrowstyle": "->", "color": "#267f78"}, color="#267f78")
-    top.annotate("Rear pusher propeller", xy=(5,-15), xytext=(0,-20), ha="center",
+    top.annotate("Rear pusher propeller", xy=(6,-28), xytext=(0,-34), ha="center",
                  arrowprops={"arrowstyle": "->", "color": "#40565d"})
-    top.set(xlim=(-18,18), ylim=(-22,23), xlabel="World X (pixels)",
+    top.set(xlim=(-30,30), ylim=(-37,39), xlabel="World X (pixels)",
             ylabel="World Z (pixels)", title="Plan view: stepped delta silhouette")
     top.set_aspect("equal")
     top.grid(alpha=.2)
@@ -179,22 +179,22 @@ def render_preview(geometry):
         side.add_patch(Rectangle((-z-dz, ground_y-y-dy), dz, dy,
                                  facecolor=color, edgecolor="#40565d", linewidth=.7))
     side.axhline(0, color="#697f83", linewidth=1)
-    side.text(13, .3, "Ground", color="#697f83")
-    side.annotate("1 px clearance", xy=(-15.7,1), xytext=(-13,-3), ha="left",
+    side.text(24, .3, "Ground", color="#697f83")
+    side.annotate("Resting skids / propeller clearance", xy=(-28,0), xytext=(-26,-3), ha="left",
                   arrowprops={"arrowstyle":"->", "color":"#ad7029"}, color="#ad7029")
-    side.annotate("+Z / nose", xy=(18,7), xytext=(10,7), va="center",
+    side.annotate("+Z / nose", xy=(34,7), xytext=(23,7), va="center",
                   arrowprops={"arrowstyle":"->", "color":"#267f78"}, color="#267f78")
-    side.set(xlim=(-20,20), ylim=(-5,18), xlabel="World Z (pixels)",
+    side.set(xlim=(-34,38), ylim=(-5,22), xlabel="World Z (pixels)",
              ylabel="Height above ground (pixels)", title="Side view: propeller clears ground")
     side.set_aspect("equal")
     side.grid(alpha=.2)
-    figure.suptitle("SHAHED.exe - FPV Mayhem | Stage 1 static prototype | 17 separate cubes", fontsize=15)
+    figure.suptitle(f"SHAHED.exe - FPV Mayhem | Detailed fixed-wing drone | {len(geometry['parts'])} separate cubes", fontsize=15)
     figure.text(.5, .02, "Offline geometry preview only. Minecraft in-game appearance and yaw still require a client check.",
                 ha="center", color="#40565d")
     figure.tight_layout(rect=(0,.05,1,.94))
     figure.savefig(HERE / "drone-preview.png", dpi=160, facecolor=figure.get_facecolor())
     plt.close(figure)
-    print("Rendered docs/model/drone-preview.png; all 102 cube faces have opaque UV pixels")
+    print(f"Rendered docs/model/drone-preview.png; all {len(geometry['parts']) * 6} cube faces have opaque UV pixels")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,20 @@
+{
+  "1.20.1": {
+    "jar": "ports/build/1.20.1/libs/shahed-fpv-mayhem-1.0.2+mc1.20.1.jar",
+    "bytes": 997132,
+    "sha256": "c240d2eebe198725c36fe4de748aba1c5dd6a2ccd1f7aa19aa8f8556ac549fcd",
+    "audio_resources": 18
+  },
+  "1.21.1": {
+    "jar": "ports/build/1.21.1/libs/shahed-fpv-mayhem-1.0.2+mc1.21.1.jar",
+    "bytes": 986479,
+    "sha256": "d04abe975400d3b87c068830623207bfaf37719098b40ff725bb65dd5d06f7fc",
+    "audio_resources": 18
+  },
+  "26.2": {
+    "jar": "build/libs/shahed-fpv-mayhem-1.0.2+mc26.2.jar",
+    "bytes": 966481,
+    "sha256": "e02ccaaa5341044f1e5e3b5a627fb77206bbd888d35ab9e1a3ccb7e1201bf43e",
+    "audio_resources": 18
+  }
+}

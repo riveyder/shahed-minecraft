@@ -2,7 +2,7 @@ plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
-version = project.mod_version
+version = "${project.mod_version}+mc${project.minecraft_version}"
 group = project.maven_group
 
 base {
@@ -26,7 +26,7 @@ fabricApi {
         createSourceSet = true
         modId = 'shahed_tests'
         enableGameTests = true
-        enableClientGameTests = false
+        enableClientGameTests = providers.gradleProperty('clientTests').isPresent()
     }
 }
 
@@ -62,4 +62,14 @@ java {
 jar {
     def archiveName = project.archives_base_name
     from('LICENSE') { rename { "${it}_${archiveName}" } }
+}
+
+// Opt-in graphics integration: ./gradlew runClientGameTest -PclientTests
+if (providers.gradleProperty('clientTests').isPresent()) {
+    loom.runConfigs.named('clientGameTest') {
+        systemProperties.put('shahed.test.dedicated', providers.gradleProperty('dedicatedClientTests').isPresent().toString())
+    }
+    sourceSets.gametest.java.srcDir 'src/clientSmoke/java'
+    sourceSets.gametest.compileClasspath += sourceSets.client.output
+    sourceSets.gametest.runtimeClasspath += sourceSets.client.output
 }

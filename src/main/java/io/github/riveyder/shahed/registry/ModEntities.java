@@ -17,11 +17,26 @@ public final class ModEntities {
             BuiltInRegistries.ENTITY_TYPE,
             DRONE_KEY,
             EntityType.Builder.<DroneEntity>of(DroneEntity::new, MobCategory.MISC)
-                    .sized(2.0F, 1.0F)
-                    .clientTrackingRange(8)
-                    .updateInterval(3)
+                    .sized(5.2F, 1.35F)
+                    .eyeHeight(0.49F)
+                    .clientTrackingRange(10)
+                    .updateInterval(1)
                     .build(DRONE_KEY)
     );
+
+    public static final EntityType<DroneEntity> QUAD = aircraft("quad",1.6F,.65F,.44F);
+    public static final EntityType<DroneEntity> CONTACT_QUAD = aircraft("contact_quad",1.6F,.7F,.48F);
+    public static final EntityType<DroneEntity> JET = aircraft("jet",2.5F,.9F,.55F);
+    private static EntityType<DroneEntity> aircraft(String id,float width,float height,float eye){
+        var key=ResourceKey.create(Registries.ENTITY_TYPE,ShahedMod.id(id));
+        return Registry.register(BuiltInRegistries.ENTITY_TYPE,key,EntityType.Builder.<DroneEntity>of(DroneEntity::new,MobCategory.MISC)
+                .sized(width,height).eyeHeight(eye).clientTrackingRange(12).updateInterval(1).build(key));
+    }
+
+    private static final ResourceKey<EntityType<?>> PAYLOAD_KEY=ResourceKey.create(Registries.ENTITY_TYPE,ShahedMod.id("arcade_payload"));
+    public static final EntityType<io.github.riveyder.shahed.entity.PayloadEntity> PAYLOAD=Registry.register(
+            BuiltInRegistries.ENTITY_TYPE,PAYLOAD_KEY,EntityType.Builder.<io.github.riveyder.shahed.entity.PayloadEntity>of(
+                    io.github.riveyder.shahed.entity.PayloadEntity::new,MobCategory.MISC).sized(.35F,.3F).clientTrackingRange(10).updateInterval(1).build(PAYLOAD_KEY));
 
     private ModEntities() {
     }

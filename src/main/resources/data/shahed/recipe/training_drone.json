@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "IPI",
+    "CWC",
+    " R "
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "P": "#minecraft:planks",
+    "C": "minecraft:copper_ingot",
+    "W": "minecraft:white_wool",
+    "R": "minecraft:redstone"
+  },
+  "result": {
+    "id": "shahed:training_drone",
+    "count": 1
+  }
+}

@@ -7,3 +7,7 @@ run-*/
 .vscode/
 .DS_Store
 *.log
+
+# Generated Python cache (keep editable asset sources only).
+__pycache__/
+*.pyc

@@ -2,11 +2,24 @@
   "schemaVersion": 1,
   "id": "shahed_tests",
   "version": "1.0.0",
-  "name": "SHAHED.exe Stage One Integration Tests",
+  "name": "SHAHED.exe Integration Tests",
   "environment": "*",
+  "mixins": ["shahed.tests.mixins.json"],
   "entrypoints": {
     "fabric-gametest": [
-      "io.github.riveyder.shahed.test.StageOneGameTests"
+      "io.github.riveyder.shahed.test.StageOneGameTests",
+      "io.github.riveyder.shahed.test.StageTwoGameTests",
+      "io.github.riveyder.shahed.test.PolishFlightGameTests",
+      "io.github.riveyder.shahed.test.RemoteFpvGameTests",
+      "io.github.riveyder.shahed.test.DestructionGameTests",
+      "io.github.riveyder.shahed.test.ExplosionPolicyGameTests",
+      "io.github.riveyder.shahed.test.CinematicExplosionGameTests",
+      "io.github.riveyder.shahed.test.SettingsGameTests",
+      "io.github.riveyder.shahed.test.ReplayGameTests",
+      "io.github.riveyder.shahed.test.ExtrasGameTests"
+    ],
+    "fabric-client-gametest": [
+      "io.github.riveyder.shahed.test.ClientSmokeTest"
     ]
   },
   "depends": {

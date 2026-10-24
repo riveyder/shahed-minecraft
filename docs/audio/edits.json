@@ -1,0 +1,149 @@
+{
+  "engine": {
+    "sources": [
+      "piston"
+    ],
+    "edit": "10–17s, bandpass, 1s equal-power overlap",
+    "loop": true,
+    "seconds": 6.0,
+    "sha256": "b76d40783e1232d811706d3c1305a5f7683429f20865d3568f06b3827d032edd"
+  },
+  "startup": {
+    "sources": [
+      "piston"
+    ],
+    "edit": "0–3.6s startup excerpt, bandpass, edge fades",
+    "loop": false,
+    "seconds": 3.6,
+    "sha256": "8009c20366796801f28c43ade3b1fbe70884bb71ca38421a77e825055aa5e51d"
+  },
+  "shutdown": {
+    "sources": [
+      "piston"
+    ],
+    "edit": "24.7–28.5s shutdown excerpt, bandpass, edge fades",
+    "loop": false,
+    "seconds": 3.8,
+    "sha256": "44159d9549af12bbecf8364e8f2714eff78849e80b7340d771fd6edffd49eee0"
+  },
+  "quad_engine": {
+    "sources": [
+      "quad"
+    ],
+    "edit": "5.8–10.8s; 0.8s overlap; contact speed +4%",
+    "loop": true,
+    "seconds": 4.2,
+    "sha256": "90afc82fc2090851c8e912017bfe564c333c7242dc4e42349f9e7a3568e33bae"
+  },
+  "quad_startup": {
+    "sources": [
+      "quad"
+    ],
+    "edit": "4.65–6.35s motor spool-up excerpt",
+    "loop": false,
+    "seconds": 1.7,
+    "sha256": "beb61616a84b600c82e44cd8c5ddffa8270cfe97e23cd5dd7902e1540526a136"
+  },
+  "quad_shutdown": {
+    "sources": [
+      "quad"
+    ],
+    "edit": "42.7–45.4s landing motor decay excerpt",
+    "loop": false,
+    "seconds": 2.7,
+    "sha256": "cd681f41f8fb09df3fc29b3b84ebaf9589faa91e2a02e4526c67cbbc86ef2dba"
+  },
+  "contact_quad_engine": {
+    "sources": [
+      "quad"
+    ],
+    "edit": "5.8–10.8s; 0.8s overlap; contact speed +4%",
+    "loop": true,
+    "seconds": 4.038,
+    "sha256": "1806c63cda659d86b01f6b49ec014b73eaad8d67ecd1545ac41942fceb653f13"
+  },
+  "contact_quad_startup": {
+    "sources": [
+      "quad"
+    ],
+    "edit": "4.65–6.35s motor spool-up excerpt",
+    "loop": false,
+    "seconds": 1.7,
+    "sha256": "a4fba4590590beea44471be1ee1255a36428bca461651b50337fde7d748f54a5"
+  },
+  "contact_quad_shutdown": {
+    "sources": [
+      "quad"
+    ],
+    "edit": "42.7–45.4s landing motor decay excerpt",
+    "loop": false,
+    "seconds": 2.7,
+    "sha256": "6d3004ba2e0345fb2667ff1ddd91634e3b090da8baa3a768f9fb8718c248aa05"
+  },
+  "jet_engine": {
+    "sources": [
+      "jet"
+    ],
+    "edit": "45–54s steady start-cart turbine, bandpass and 1s overlap",
+    "loop": true,
+    "seconds": 8.0,
+    "sha256": "5b6c748727f0e1c4eb75c21d3167c8da3e019893e3c98bad68173128dcb05745"
+  },
+  "jet_startup": {
+    "sources": [
+      "jet"
+    ],
+    "edit": "13–16.5s turbine rise excerpt; not a full physical startup sequence",
+    "loop": false,
+    "seconds": 3.5,
+    "sha256": "b3e224cc848b640a39f548900d86ae9a210cce48b4a9899dcb59746cecced816"
+  },
+  "jet_shutdown": {
+    "sources": [
+      "jet"
+    ],
+    "edit": "104–108.5s turbine decay excerpt",
+    "loop": false,
+    "seconds": 4.5,
+    "sha256": "ee9563ff0200d1c8954bf8ebbc8ab83335f95441fcf574985cae6d8fa725f6be"
+  },
+  "blast": {
+    "sources": [
+      "crack",
+      "rumble"
+    ],
+    "edit": "Recorded firework transient + slowed filtered body + recorded thunder decay; 8s layered master",
+    "loop": false,
+    "seconds": 8.0,
+    "sha256": "4bb9753b15d141ecf4dd27f10716d759ceda8a5bea7273573e74f825d4fe9776"
+  },
+  "blast_distant": {
+    "sources": [
+      "crack",
+      "rumble"
+    ],
+    "edit": "Low-passed near master; softened attack and extended recorded decay",
+    "loop": false,
+    "seconds": 8.0,
+    "sha256": "b0572ec6da252a17b5019975cab02257bfb7fcf2b72b0d37bff33d46193b44e3"
+  },
+  "blast_echo": {
+    "sources": [
+      "crack",
+      "rumble"
+    ],
+    "edit": "Three quiet filtered reflections; client delays optional echo once",
+    "loop": false,
+    "seconds": 9.0,
+    "sha256": "3a5ff618a4f74cd099ea687a10780e95ec967db4081b9af6c0e8895f5479e86e"
+  },
+  "payload_release": {
+    "sources": [
+      "latch"
+    ],
+    "edit": "Single mechanical latch movement, 3.16–3.72s, bandpass/fades",
+    "loop": false,
+    "seconds": 0.56,
+    "sha256": "36e70183fcafdb7fbb4f5d63dc4d3769f2164d0b24050d975991534df99a9867"
+  }
+}

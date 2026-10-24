@@ -24,28 +24,23 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 
-/** Server-side integration checks for the deliberately stationary first-stage drone. */
+/** Regression checks for registration, placement, persistence and an unpiloted drone's gravity. */
 public final class StageOneGameTests {
     @GameTest
-    public void spawningRequiresCreativeAndPreservesTheCreatorsIdentity(GameTestHelper helper) {
+    public void survivalSpawningPreservesTheCreatorsIdentity(GameTestHelper helper) {
         Vec3 position = Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(3, 2, 3)));
         Player survivalPlayer = helper.makeMockServerPlayer(GameType.SURVIVAL);
-        helper.assertFalse(DroneEntity.spawn(helper.getLevel(), survivalPlayer, position),
-                "Survival players must not create prototype drones");
-        helper.assertEntityNotPresent(ModEntities.DRONE);
-
-        Player creativePlayer = helper.makeMockServerPlayer(GameType.CREATIVE);
-        creativePlayer.setYRot(135.0F);
-        helper.assertTrue(DroneEntity.spawn(helper.getLevel(), creativePlayer, position),
-                "Creative players must be able to create a drone at an unobstructed position");
+        survivalPlayer.setYRot(135.0F);
+        helper.assertTrue(DroneEntity.spawn(helper.getLevel(), survivalPlayer, position),
+                "Survival players must be able to create a drone at an unobstructed position");
 
         DroneEntity drone = helper.findOneEntity(ModEntities.DRONE);
-        helper.assertTrue(drone.getOwnerUuid().filter(creativePlayer.getUUID()::equals).isPresent(),
+        helper.assertTrue(drone.getOwnerUuid().filter(survivalPlayer.getUUID()::equals).isPresent(),
                 "The spawned drone must store its creator UUID");
         helper.assertTrue(Math.abs(drone.getYRot() - 135.0F) < 0.001F,
                 "The spawned drone must face the same direction as its creator");
         helper.assertTrue(drone.position().equals(position), "The drone must spawn at the requested position");
-        helper.assertFalse(DroneEntity.spawn(helper.getLevel(), creativePlayer, position),
+        helper.assertFalse(DroneEntity.spawn(helper.getLevel(), survivalPlayer, position),
                 "A second drone must not overlap the first drone");
         helper.assertEntitiesPresent(ModEntities.DRONE, 1);
         helper.succeed();
@@ -74,27 +69,30 @@ public final class StageOneGameTests {
     }
 
     @GameTest
-    public void registeredDroneSpawnsAndStaysStationary(GameTestHelper helper) {
+    public void registeredUnpilotedDroneFallsInsteadOfHovering(GameTestHelper helper) {
         helper.assertTrue(id("drone").equals(BuiltInRegistries.ENTITY_TYPE.getKey(ModEntities.DRONE)),
                 "The drone entity type must be registered as shahed:drone");
 
-        DroneEntity drone = helper.spawn(ModEntities.DRONE, 2, 2, 2);
-        UUID entityUuid = drone.getUUID();
-        Vec3 position = drone.position();
+        DroneEntity drone = helper.spawn(ModEntities.DRONE, 3, 24, 3);
+        try {
+            UUID entityUuid = drone.getUUID();
+            Vec3 position = drone.position();
+            helper.assertTrue(drone.getType() == ModEntities.DRONE, "Spawned entity has the wrong type");
+            helper.assertTrue(drone.level() == helper.getLevel(), "Drone must belong to the server test world");
+            helper.assertFalse(drone.isFlying(), "An unpiloted drone must not have active control authority");
+            for (int tick = 0; tick < 5; tick++) {
+                drone.tick();
+            }
 
-        helper.assertTrue(drone.getType() == ModEntities.DRONE, "Spawned entity has the wrong type");
-        helper.assertTrue(drone.level() == helper.getLevel(), "Drone must belong to the server test world");
-        helper.assertTrue(drone.isNoGravity(), "A first-stage drone must remain a static display entity");
-
-        // Exercise the real entity lifecycle without introducing any flight or control implementation.
-        for (int tick = 0; tick < 5; tick++) {
-            drone.tick();
+            helper.assertTrue(drone.getY() < position.y - 0.05,
+                    "An uncontrolled airborne drone without thrust must lose altitude");
+            helper.assertTrue(drone.getDeltaMovement().y < 0,
+                    "Gravity must act on an unpiloted drone rather than freezing it in the air");
+            helper.assertTrue(drone.getUUID().equals(entityUuid), "Ticking must preserve the entity UUID");
+            helper.succeed();
+        } finally {
+            drone.discard();
         }
-
-        helper.assertTrue(drone.position().equals(position), "An uncontrolled drone must not move");
-        helper.assertTrue(drone.getDeltaMovement().equals(Vec3.ZERO), "An uncontrolled drone must have zero velocity");
-        helper.assertTrue(drone.getUUID().equals(entityUuid), "Ticking must preserve the entity UUID");
-        helper.succeed();
     }
 
     @GameTest
@@ -120,7 +118,7 @@ public final class StageOneGameTests {
     @GameTest
     public void droneSaveLoadPreservesOwnershipAndOrientation(GameTestHelper helper) {
         UUID ownerUuid = UUID.fromString("88f9de5d-ea85-4dc0-b09e-26d660d59df4");
-        DroneEntity original = helper.spawn(ModEntities.DRONE, 2, 2, 2);
+        DroneEntity original = helper.spawn(ModEntities.DRONE, 3, 40, 3);
         original.setOwnerUuid(ownerUuid);
         original.setYRot(90.0F);
 
@@ -140,7 +138,11 @@ public final class StageOneGameTests {
                 "Saving and loading must preserve the drone yaw");
         helper.assertTrue(restored.position().distanceToSqr(original.position()) < 0.000001,
                 "Saving and loading must preserve the drone position");
-        helper.assertTrue(restored.isNoGravity(), "Loading must preserve the stationary first-stage behavior");
+        helper.assertFalse(restored.isFlying(), "Loading must not restore a live control session");
+        Vec3 savedPosition = restored.position();
+        restored.tick();
+        helper.assertTrue(restored.getY() < savedPosition.y,
+                "A restored drone without thrust must obey gravity");
         helper.succeed();
     }
 
