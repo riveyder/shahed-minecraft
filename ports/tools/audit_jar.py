@@ -3,11 +3,11 @@ from pathlib import Path
 from zipfile import ZipFile
 import json,sys,hashlib
 mc=sys.argv[1]
-jar=Path(sys.argv[2]) if len(sys.argv)>2 else Path('ports/build')/mc/'libs'/('shahed-fpv-mayhem-1.0.1+mc'+mc+'.jar')
+jar=Path(sys.argv[2]) if len(sys.argv)>2 else Path('ports/build')/mc/'libs'/('shahed-fpv-mayhem-1.0.2+mc'+mc+'.jar')
 java={'1.20.1':17,'1.21.1':21,'26.2':25}[mc]
 with ZipFile(jar) as z:
     names=set(z.namelist());meta=json.loads(z.read('fabric.mod.json'))
-    assert meta['version']=='1.0.1+mc'+mc,meta['version']
+    assert meta['version']=='1.0.2+mc'+mc,meta['version']
     assert meta['depends']['minecraft']==mc,meta['depends']
     assert meta['depends']['java']=='>='+str(java)
     for n in names:

@@ -42,7 +42,7 @@ jobs:
         run: ./gradlew -p ports -Pmc=${{ matrix.minecraft }} build -x test --no-daemon
       - name: Audit 26.2 artifact
         if: matrix.minecraft == '26.2'
-        run: python -B ports/tools/audit_jar.py 26.2 build/libs/shahed-fpv-mayhem-1.0.1+mc26.2.jar
+        run: python -B ports/tools/audit_jar.py 26.2 build/libs/shahed-fpv-mayhem-1.0.2+mc26.2.jar
       - name: Audit legacy artifact
         if: matrix.minecraft != '26.2'
         run: python -B ports/tools/audit_jar.py ${{ matrix.minecraft }}

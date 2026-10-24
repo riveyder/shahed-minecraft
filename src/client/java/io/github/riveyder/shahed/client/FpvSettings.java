@@ -41,6 +41,9 @@ public final class FpvSettings {
     public boolean explosionEcho=true;
     public int hudArgb() { return switch(hudColor) {case 1 -> 0xFFF0F5F3;case 2 -> 0xFFFF7474;default -> 0xFF9DFFC0;}; }
     public double engineVolume = 0.7;
+    public double quadVolume = 0.7;
+    public double jetVolume = 0.7;
+    public double aircraftVolume(io.github.riveyder.shahed.entity.AircraftKind kind) {return switch(kind){case SHAHED->engineVolume;case QUAD,CONTACT->quadVolume;case JET->jetVolume;};}
     public double windVolume = 0.35;
 
     public static FpvSettings load() {
@@ -51,6 +54,8 @@ public final class FpvSettings {
                     // Migrate the old six-second default once; preserve deliberate non-default durations.
                     var json=com.google.gson.JsonParser.parseString(Files.readString(FILE)).getAsJsonObject();
                     if(!json.has("effectsVersion")&&settings.smokeSeconds==6)settings.smokeSeconds=25;
+                    if(!json.has("quadVolume"))settings.quadVolume=settings.engineVolume;
+                    if(!json.has("jetVolume"))settings.jetVolume=settings.engineVolume;
                     settings.effectsVersion=2;
                     settings.sanitize();
                     return settings;
@@ -89,6 +94,8 @@ public final class FpvSettings {
         interfaceVolume=Double.isFinite(interfaceVolume)?Math.clamp(interfaceVolume,0,1):.7;
         explosionVolume=Double.isFinite(explosionVolume)?Math.clamp(explosionVolume,0,1):1;
         engineVolume = Double.isFinite(engineVolume) ? Math.clamp(engineVolume,0,1) : 0.7;
+        quadVolume=Double.isFinite(quadVolume)?Math.clamp(quadVolume,0,1):.7;
+        jetVolume=Double.isFinite(jetVolume)?Math.clamp(jetVolume,0,1):.7;
         windVolume = Double.isFinite(windVolume) ? Math.clamp(windVolume,0,1) : 0.35;
         sensitivity = Double.isFinite(sensitivity) ? Math.clamp(sensitivity, 0.1, 3.0) : 1.0;
         smoothingSeconds = Double.isFinite(smoothingSeconds) ? Math.clamp(smoothingSeconds, 0.0, 0.5) : 0.12;

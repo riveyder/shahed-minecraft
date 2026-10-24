@@ -1,0 +1,74 @@
+[
+  {
+    "key": "piston",
+    "author": "Cheeseheadburger",
+    "id": 141519,
+    "source": "https://freesound.org/people/Cheeseheadburger/sounds/141519/",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "download": "https://cdn.freesound.org/previews/141/141519_2479316-hq.mp3",
+    "sha256": "2070350117aa768e84859d4b1ae2bade3aa6cf0fb8560c54798d025039840931",
+    "bytes": 711451,
+    "retrieved": "2026-10-24",
+    "format": "Public HQ MP3 preview; not lossless original"
+  },
+  {
+    "key": "quad",
+    "author": "hoshisato",
+    "id": 822500,
+    "source": "https://freesound.org/people/hoshisato/sounds/822500/",
+    "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "download": "https://cdn.freesound.org/previews/822/822500_17756109-hq.mp3",
+    "sha256": "dc3e9d5915bff5c64fd6548c243182f9e7043d5522d236626cfdd9b582a99484",
+    "bytes": 1141824,
+    "retrieved": "2026-10-24",
+    "format": "Public HQ MP3 preview; not lossless original"
+  },
+  {
+    "key": "jet",
+    "author": "C-V",
+    "id": 704945,
+    "source": "https://freesound.org/people/C-V/sounds/704945/",
+    "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "download": "https://cdn.freesound.org/previews/704/704945_8956746-hq.mp3",
+    "sha256": "f8d7cb2fb0752ca3c371d60fbef12f9f3520263a5826b40c8573990cd8aae455",
+    "bytes": 3735168,
+    "retrieved": "2026-10-24",
+    "format": "Public HQ MP3 preview; not lossless original"
+  },
+  {
+    "key": "crack",
+    "author": "Rudmer_Rotteveel",
+    "id": 336011,
+    "source": "https://freesound.org/people/Rudmer_Rotteveel/sounds/336011/",
+    "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "download": "https://cdn.freesound.org/previews/336/336011_4921277-hq.mp3",
+    "sha256": "27178a5d0b8e87b8b4ba9b64230282a415ef9649ad04abb477be9148c8d3c6f4",
+    "bytes": 25780,
+    "retrieved": "2026-10-24",
+    "format": "Public HQ MP3 preview; not lossless original"
+  },
+  {
+    "key": "rumble",
+    "author": "FenrirFangs",
+    "id": 234736,
+    "source": "https://freesound.org/people/FenrirFangs/sounds/234736/",
+    "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "download": "https://cdn.freesound.org/previews/234/234736_3635427-hq.mp3",
+    "sha256": "ea6d10969af443b6e3555f3efbf6eb6c6368331030c7f316a41028243556eaec",
+    "bytes": 215751,
+    "retrieved": "2026-10-24",
+    "format": "Public HQ MP3 preview; not lossless original"
+  },
+  {
+    "key": "latch",
+    "author": "mm4wood",
+    "id": 760626,
+    "source": "https://freesound.org/people/mm4wood/sounds/760626/",
+    "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "download": "https://cdn.freesound.org/previews/760/760626_13862037-hq.mp3",
+    "sha256": "efd0f95e6ac1bcac125dfb9442fc555c1b6a6ddbadff94c64692fa56bd50b9f8",
+    "bytes": 1201272,
+    "retrieved": "2026-10-24",
+    "format": "Public HQ MP3 preview; not lossless original"
+  }
+]

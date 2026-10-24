@@ -44,6 +44,7 @@ public final class PayloadEntity extends Entity {
         if(position().subtract(before).subtract(velocity).lengthSqr()>1e-10){
             detonated=true; // Before callbacks: never repeat effects or damage.
             var pilot=owner==null?null:level.getServer().getPlayerList().getPlayer(owner);
+            io.github.riveyder.shahed.network.MechanicalSoundPayload.emit(level,position(),true);
             DroneExplosions.explode(level,this,pilot,position().add(0,.12,0),DroneConfig.get());discard();
         }
         needsSync=true;

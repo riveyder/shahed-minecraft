@@ -157,5 +157,14 @@
   "race.aircraft": "Racing · %s",
   "help.shahed.fleet": "FLEET. Quadcopters: %s / %s forward/back, %s / %s left/right, %s / %s up/down, %s brake. Neutral input hovers. Reusable FPV can land and fly again; contact FPV is single-use. Jet FPV: SHAHED controls, high speed and inertia, no hover. Controller and goggles work with every aircraft.",
   "help.shahed.payload": "MODULE. Use a module on your powered-off, landed reusable FPV: one item is consumed and LOADED is visible to everyone. %s releases in flight; EMPTY follows and flight continues. Disconnecting stops the motors. Land and power off to attach another module.",
-  "help.shahed.fleet_safety": "RACING AND SAFE. Connect to the desired aircraft before choosing a course. New FPV aircraft enter without a module; SHAHED must be training. Records are separated by type. SAFE persists after finish/cancel/disconnect. To disable it explicitly: land, power off, sneak-use your aircraft with an empty hand. Training SHAHED is always safe."
+  "help.shahed.fleet_safety": "RACING AND SAFE. Connect to the desired aircraft before choosing a course. New FPV aircraft enter without a module; SHAHED must be training. Records are separated by type. SAFE persists after finish/cancel/disconnect. To disable it explicitly: land, power off, sneak-use your aircraft with an empty hand. Training SHAHED is always safe.",
+  "audio.shahed.category": "Audio",
+  "audio.shahed.piston": "SHAHED piston engine",
+  "audio.shahed.quad": "FPV quadcopter motors",
+  "audio.shahed.jet": "Jet engine",
+  "audio.shahed.wind": "Wind / flight effects",
+  "audio.shahed.interface": "SHAHED interface",
+  "audio.shahed.explosion": "Explosion",
+  "audio.shahed.rumble": "Distant rumble",
+  "audio.shahed.echo": "Explosion echo"
 }

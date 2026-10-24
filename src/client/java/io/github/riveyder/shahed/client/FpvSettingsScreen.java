@@ -51,7 +51,7 @@ public final class FpvSettingsScreen extends Screen {
         addRenderableWidget(Button.builder(Component.translatable("race.menu"),b->minecraft.gui.setScreen(new RaceScreen(this)))
                 .bounds(width-68,8,60,20).build());
         rows.clear();int tabWidth=Math.min(100,(width-16)/4),start=width/2-tabWidth*2;
-        for(int i=0;i<CATEGORIES.length;i++) {int selected=i;var tab=addRenderableWidget(Button.builder(Component.literal(CATEGORIES[i]),b->{
+        for(int i=0;i<CATEGORIES.length;i++) {int selected=i;var tab=addRenderableWidget(Button.builder(Component.literal(i==3?audioLabel("category"):CATEGORIES[i]),b->{
             category=selected;page=0;rebuildWidgets();}).bounds(start+(i%4)*tabWidth,32+(i/4)*22,tabWidth-2,20).build());tab.active=i!=category;}
         switch(category) {
             case 0 -> {
@@ -84,12 +84,14 @@ public final class FpvSettingsScreen extends Screen {
                 toggle("Ночное видение FPV",()->settings.nightVision,v->settings.nightVision=v,true);
             }
             case 3 -> {
-                slider("Двигатель",settings.engineVolume,0,1,false,v->settings.engineVolume=v,true);
-                slider("Ветер",settings.windVolume,0,1,false,v->settings.windVolume=v,true);
-                slider("Интерфейс SHAHED",settings.interfaceVolume,0,1,false,v->settings.interfaceVolume=v,true);
-                slider("Взрыв",settings.explosionVolume,0,1,false,v->settings.explosionVolume=v,true);
-                slider("Дальний гул",settings.distantRumbleVolume,0,1,false,v->settings.distantRumbleVolume=v,true);
-                toggle("Эхо взрыва",()->settings.explosionEcho,v->settings.explosionEcho=v,true);
+                slider(audioLabel("piston"),settings.engineVolume,0,1,false,v->settings.engineVolume=v,true);
+                slider(audioLabel("quad"),settings.quadVolume,0,1,false,v->settings.quadVolume=v,true);
+                slider(audioLabel("jet"),settings.jetVolume,0,1,false,v->settings.jetVolume=v,true);
+                slider(audioLabel("wind"),settings.windVolume,0,1,false,v->settings.windVolume=v,true);
+                slider(audioLabel("interface"),settings.interfaceVolume,0,1,false,v->settings.interfaceVolume=v,true);
+                slider(audioLabel("explosion"),settings.explosionVolume,0,1,false,v->settings.explosionVolume=v,true);
+                slider(audioLabel("rumble"),settings.distantRumbleVolume,0,1,false,v->settings.distantRumbleVolume=v,true);
+                action(audioLabel("echo")+": "+Component.translatable(settings.explosionEcho?"options.on":"options.off").getString(),()->{settings.explosionEcho=!settings.explosionEcho;rebuildWidgets();},true);
             }
             case 4 -> {
                 toggle("Запрос повтора",()->settings.replayEnabled,v->settings.replayEnabled=v,true);
@@ -130,6 +132,7 @@ public final class FpvSettingsScreen extends Screen {
         var next=addRenderableWidget(Button.builder(Component.literal("›"),b->{page++;rebuildWidgets();}).bounds(width/2+85,bottom,35,20).build());next.active=page+1<pages;
         addRenderableWidget(Button.builder(Component.literal("Готово · "+(page+1)+"/"+pages),b->onClose()).bounds(width/2-120,height-35,240,20).build());
     }
+    private static String audioLabel(String key){return Component.translatable("audio.shahed."+key).getString();}
     private void send(int action) {ServerSettingsClient.request(action,policy(),SettingsRequestPayload.NONE);}
     private void serverToggle(String name,int index) {toggle(name+" [сервер]",()->draft[index]>0,v->{draft[index]=v?1:0;dirty=true;},admin);}
     private void serverSlider(String name,int index,double min,double max,boolean integer) {

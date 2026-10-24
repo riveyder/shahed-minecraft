@@ -89,6 +89,7 @@ public final class DroneEntity extends Entity {
         // Clear before spawning; a failed insertion restores attachment, never an inventory item.
         entityData.set(PAYLOAD,false);
         if(!PayloadEntity.release(server,this,player)){entityData.set(PAYLOAD,true);return false;}
+        io.github.riveyder.shahed.network.MechanicalSoundPayload.emit(server,position().add(0,-.35,0),false);
         needsSync=true;return true;
     }
     public void setReplayPayload(boolean loaded){if(level().isClientSide())entityData.set(PAYLOAD,loaded&&kind()==AircraftKind.QUAD);}

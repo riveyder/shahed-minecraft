@@ -134,5 +134,13 @@
         "attenuation_distance": 64
       }
     ]
+  },
+  "payload_release": {
+    "sounds": [
+      {
+        "name": "shahed:payload_release",
+        "attenuation_distance": 64
+      }
+    ]
   }
 }

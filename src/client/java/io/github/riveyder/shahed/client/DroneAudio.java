@@ -14,8 +14,25 @@ import net.minecraft.util.RandomSource;
 /** Entity data is server-authoritative. No client audio state changes gameplay. */
 public final class DroneAudio {
     private static final Map<DroneEntity, Loop[]> LOOPS=new HashMap<>();
+    private static final java.util.List<Transition> TRANSITIONS=new java.util.ArrayList<>();
+    private static void clear(Minecraft client){
+        for(var loops:LOOPS.values())for(var sound:loops)client.getSoundManager().stop(sound);
+        for(var sound:TRANSITIONS)client.getSoundManager().stop(sound);
+        LOOPS.clear();TRANSITIONS.clear();
+    }
+    private static float distanceGain(DroneEntity drone){
+        double d=Minecraft.getInstance().gameRenderer.mainCamera().position().distanceTo(drone.position());
+        double t=Math.clamp(d/144,0,1);return (float)((1-t*t*(3-2*t))/(1+d/80));
+    }
+    private static void transition(DroneEntity drone,boolean starting,Minecraft client){
+        while(TRANSITIONS.size()>=32)client.getSoundManager().stop(TRANSITIONS.remove(0));
+        var sound=new Transition(drone,starting);TRANSITIONS.add(sound);client.getSoundManager().play(sound);
+    }
     public static void initialize() {
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->clear(client));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if(client.level==null){clear(client);return;}
+            TRANSITIONS.removeIf(sound->{if(sound.drone.isRemoved()||sound.drone.level()!=client.level){client.getSoundManager().stop(sound);return true;}return sound.isStopped()||!client.getSoundManager().isActive(sound);});
             LOOPS.entrySet().removeIf(entry -> {
                 if (entry.getKey().isRemoved() || entry.getKey().level()!=client.level
                         || client.getCameraEntity()!=null && entry.getKey().distanceToSqr(client.getCameraEntity())>20736) {
@@ -62,7 +79,7 @@ public final class DroneAudio {
             this.drone=drone; this.wind=wind;
             powered=drone.getThrottle()>.03F;
             looping=true; delay=0; volume=0;
-            relative=wind; attenuation=wind?SoundInstance.Attenuation.NONE:SoundInstance.Attenuation.LINEAR;
+            relative=false; attenuation=SoundInstance.Attenuation.NONE;
             x=drone.getX(); y=drone.getY(); z=drone.getZ();
         }
         @Override public boolean canStartSilent() { return true; }
@@ -75,26 +92,38 @@ public final class DroneAudio {
                 x=drone.getX(); y=drone.getY(); z=drone.getZ();
                 boolean now=powered?rpm>.015F:rpm>.04F;
                 if(now!=powered) {
-                    client.level.playLocalSound(x,y,z,ModSounds.aircraft(drone.kind(),now?1:2),
-                            SoundSource.NEUTRAL,(float)settings.engineVolume,1,false);
+                    transition(drone,now,client);
                     powered=now;
                 }
-                float gain=rpm>.005F?(.08F+.92F*(float)Math.sqrt(rpm))*(float)settings.engineVolume:0;
+                float gain=rpm>.005F?(.08F+.92F*(float)Math.sqrt(rpm))*(float)settings.aircraftVolume(drone.kind())*distanceGain(drone):0;
                 volume+=(gain-volume)*.15F;
                 double distance=client.gameRenderer.mainCamera().position().distanceTo(drone.position());
                 // Radial motion gives a restrained flyby without relying on unavailable OpenAL source velocities.
                 double radial=Double.isFinite(previousDistance)?Math.clamp((previousDistance-distance)*20,-40,40):0;
                 previousDistance=distance;
-                float desired=(.65F+rpm*.85F)*(float)(1+radial*.004);
-                pitch+=(desired-pitch)*.12F;
+                float load=(float)Math.sqrt(Math.clamp(rpm,0,1));
+                float base=switch(drone.kind()){case SHAHED->.82F+.34F*load;case QUAD,CONTACT->.80F+.50F*load;case JET->.85F+.28F*load;};
+                float desired=base*(float)(1+radial*.0025);
+                pitch+=(desired-pitch)*(drone.kind().hover?.28F:.14F);
             } else {
-                x=y=z=0;
-                float target=FpvController.isCameraDrone(drone)
-                        ? (float)Math.min(1,drone.getDeltaMovement().length()/drone.maxSpeed())*(float)settings.windVolume : 0;
+                x=drone.getX();y=drone.getY();z=drone.getZ();
+                float target=(float)Math.min(1,drone.getDeltaMovement().length()/drone.maxSpeed())*(float)settings.windVolume
+                        *(FpvController.isCameraDrone(drone)?1:.18F)*distanceGain(drone);
                 volume+=(target-volume)*.15F;
                 pitch=.8F+Math.min(1,(float)drone.getDeltaMovement().length());
             }
         }
+    }
+    /** A one-shot still tracks its source until it finishes; it never sticks at the startup location. */
+    private static final class Transition extends AbstractTickableSoundInstance {
+        private final DroneEntity drone;private int age;
+        Transition(DroneEntity drone,boolean starting){
+            super(ModSounds.aircraft(drone.kind(),starting?1:2),SoundSource.NEUTRAL,RandomSource.create());
+            this.drone=drone;relative=false;looping=false;attenuation=SoundInstance.Attenuation.NONE;update();
+        }
+        private void update(){x=drone.getX();y=drone.getY();z=drone.getZ();volume=.55F*(float)FpvController.settings().aircraftVolume(drone.kind())*distanceGain(drone);}
+        @Override public boolean canStartSilent(){return true;}
+        @Override public void tick(){if(drone.isRemoved()||drone.level()!=Minecraft.getInstance().level||++age>100){stop();return;}update();}
     }
     private DroneAudio() { }
 }

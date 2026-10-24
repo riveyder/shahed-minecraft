@@ -41,7 +41,8 @@ final class ExplosionAudio {
         private void updateGain() {
             var s=FpvController.settings();double d=Minecraft.getInstance().gameRenderer.mainCamera().position().distanceTo(origin);
             double blend=Math.clamp((d-32)/160,0,1);blend=blend*blend*(3-2*blend);
-            double falloff=Math.pow(Math.max(0,1-d/range),.7)/(1+d/220);
+            double t=Math.clamp(d/range,0,1);
+            double falloff=(1-t*t*(3-2*t))/(1+d/220);
             volume=(float)(falloff*(kind==0?.85*(1-blend):kind==1?.8*blend*s.distantRumbleVolume:.24*s.distantRumbleVolume));
         }
         @Override public void tick() {

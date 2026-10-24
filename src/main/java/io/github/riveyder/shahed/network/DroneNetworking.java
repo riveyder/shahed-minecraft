@@ -10,6 +10,7 @@ public final class DroneNetworking {
     }
 
     public static void register() {
+        PayloadTypeRegistry.clientboundPlay().register(MechanicalSoundPayload.TYPE,MechanicalSoundPayload.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(PayloadReleasePayload.TYPE,PayloadReleasePayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(PayloadReleasePayload.TYPE,(p,c)->DroneSessions.releasePayload(c.player(),p));
         PayloadTypeRegistry.serverboundPlay().register(RaceRequestPayload.TYPE,RaceRequestPayload.CODEC);

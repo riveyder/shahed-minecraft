@@ -23,6 +23,7 @@ public final class ShahedClient implements ClientModInitializer {
         EntityRenderers.register(ModEntities.PAYLOAD,io.github.riveyder.shahed.client.renderer.PayloadRenderer::new);
         FpvController.initialize();
         DroneAudio.initialize();
+        MechanicalAudio.initialize();
         ReplayController.initialize();
         ServerSettingsClient.initialize();
         ExplosionEffects.initialize();

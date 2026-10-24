@@ -10,6 +10,7 @@ public final class ModSounds {
     public static final SoundEvent STARTUP = sound("startup");
     public static final SoundEvent SHUTDOWN = sound("shutdown");
     public static final SoundEvent WIND = sound("wind");
+    public static final SoundEvent PAYLOAD_RELEASE = sound("payload_release");
     public static final SoundEvent IMPACT = sound("impact");
     public static final SoundEvent BLAST = sound("blast");
     public static final SoundEvent BLAST_ECHO = sound("blast_echo");

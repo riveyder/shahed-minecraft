@@ -16,7 +16,7 @@ for src in ('src/main/resources','src/client/resources'):
     for p in (ROOT/src).rglob('*'):
         if p.is_file():
             dest=out/'resources'/p.relative_to(ROOT/src);dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,dest)
-p=out/'resources/fabric.mod.json';d=json.loads(p.read_text(encoding='utf-8'));d['version']='1.0.1+mc'+mc;d['depends'].update({'minecraft':mc,'java':'>='+('17' if mc=='1.20.1' else '21'),'fabric-api':'>='+('0.92.12+1.20.1' if mc=='1.20.1' else '0.116.17+1.21.1')});p.write_text(json.dumps(d,ensure_ascii=False,indent=2),encoding='utf-8')
+p=out/'resources/fabric.mod.json';d=json.loads(p.read_text(encoding='utf-8'));d['version']='1.0.2+mc'+mc;d['depends'].update({'minecraft':mc,'java':'>='+('17' if mc=='1.20.1' else '21'),'fabric-api':'>='+('0.92.12+1.20.1' if mc=='1.20.1' else '0.116.17+1.21.1')});p.write_text(json.dumps(d,ensure_ascii=False,indent=2),encoding='utf-8')
 if mc=='1.20.1':
     (out/'main/io/github/riveyder/shahed/mixin/PlayerChunkSenderFpvMixin.java').unlink()
 # Apply authored adapters last; common adapters are already written against old API names.
