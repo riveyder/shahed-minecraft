@@ -73,13 +73,23 @@ def source(s,name,mc):
             s=re.sub(r'    public static final MapCodec<CrashFireBlock> CODEC=.*?;\n','',s)
             s=re.sub(r'    @Override protected MapCodec<CrashFireBlock> codec\(\) \{return CODEC;}\n','',s)
             s=s.replace('protected void onPlace','public void onPlace').replace('protected void tick','public void tick')
-    if name in ('DroneSessions.java','DroneReplays.java'):
+    if mc=='1.20.1' and name in ('DroneSessions.java','DroneReplays.java'):
         s=re.sub(r'\(\(ChunkMapFpvAccess\)chunks?\.chunkMap\)\.shahed\$updateChunkTracking\(p(?:layer)?\);','',s)
         s=re.sub(r'\(\(ChunkMapFpvAccess\) chunks\.chunkMap\)\.shahed\$updateChunkTracking\(player\);','',s)
     if name=='DroneSessions.java':
         s=s.replace('UseItemCallback.EVENT.register((player, level, hand) -> controllingResult(', 'UseItemCallback.EVENT.register((player, level, hand) -> new net.minecraft.world.InteractionResultHolder<>(controllingResult(')
         s=s.replace('&& !player.getItemInHand(hand).is(ModItems.CONTROLLER)));','&& !player.getItemInHand(hand).is(ModItems.CONTROLLER)),player.getItemInHand(hand)));')
+    if name=='ControllerItem.java' and mc=='1.21.1':
+        s=s.replace('stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getString(key)','Optional.of(stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getString(key))').replace('.getBoolean(DESTROYED_KEY).orElse(false)','.getBoolean(DESTROYED_KEY)')
+        s=s.replace('public InteractionResult use(Level level, Player player, InteractionHand hand) {','public net.minecraft.world.InteractionResultHolder<ItemStack> use(Level level,Player player,InteractionHand hand){return new net.minecraft.world.InteractionResultHolder<>(useController(level,player,hand),player.getItemInHand(hand));}\n    private InteractionResult useController(Level level,Player player,InteractionHand hand){')
+        s=s.replace(': use(context.getLevel(),',': useController(context.getLevel(),')
+    if name=='ModItems.java' and mc=='1.21.1':
+        s=s.replace('import net.minecraft.world.item.equipment.Equippable;','')
+        a=s.index('    public static final Item FPV_GOGGLES');b=s.index('    public static final Item QUAD',a)
+        s=s[:a]+'    public static final Item FPV_GOGGLES=register("fpv_goggles",io.github.riveyder.shahed.item.GogglesItem::new,equipmentProperties("fpv_goggles"));\n'+s[b:]
+        s=s.replace('properties.setId(key)','properties')
     if name=='ServerPlayerControlMixin.java':s=s.replace('"handleAttack", ','')
+    if mc=='1.21.1':s=s.replace('int steps,boolean teleport){interpolation','int steps){interpolation').replace('PayloadTypeRegistry.serverboundPlay()','PayloadTypeRegistry.playC2S()').replace('PayloadTypeRegistry.clientboundPlay()','PayloadTypeRegistry.playS2C()')
     import client
     return client.source(s,name,mc)
 

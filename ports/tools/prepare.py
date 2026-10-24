@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys,json,shutil
 from transforms import source,resources
+import adapters
 ROOT=Path(__file__).resolve().parents[2];mc=sys.argv[1]
 assert mc in ('1.20.1','1.21.1')
 out=ROOT/'ports/build'/mc/'generated'
@@ -22,16 +23,18 @@ if mc=='1.20.1':
 for layer in ('common',mc):
     for p in (ROOT/'ports/adapters'/layer).rglob('*'):
         if p.is_file():
-            dest=out/p.relative_to(ROOT/'ports/adapters'/layer);dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,dest)
+            dest=out/p.relative_to(ROOT/'ports/adapters'/layer);dest.parent.mkdir(parents=True,exist_ok=True)
+            if p.suffix=='.java':dest.write_text(adapters.source(p.read_text(encoding='utf-8'),p.name,mc),encoding='utf-8')
+            else:shutil.copyfile(p,dest)
 for p in (out/'resources').rglob('*.json'):
     obj=resources(p,json.loads(p.read_text(encoding='utf-8')),mc)
     if p.name=='shahed.mixins.json':
         obj['mixins']=[m for m in obj['mixins'] if mc!='1.20.1' or m!='PlayerChunkSenderFpvMixin']
         obj['mixins']+=['PilotConnectionMixin','PortExplosionMixin']
     if p.name=='shahed.client.mixins.json':obj['client']+=['PortHudMixin']
-    if mc=='1.20.1' and '/data/shahed/recipe/' in p.as_posix():
+    if '/data/shahed/recipe/' in p.as_posix():
         obj['key']={k:({'tag':v[1:]} if v.startswith('#') else {'item':v}) for k,v in obj['key'].items()}
-        obj['result']['item']=obj['result'].pop('id')
+        if mc=='1.20.1':obj['result']['item']=obj['result'].pop('id')
     if mc=='1.20.1' and '/advancement/' in p.as_posix():
         for criterion in obj.get('criteria',{}).values():
             for predicate in criterion.get('conditions',{}).get('items',[]):

@@ -23,7 +23,7 @@ public final class ModItems {
     public static final Item DRONE = register("drone", DroneItem::new, equipmentProperties("drone"));
     public static final Item TRAINING_DRONE = register("training_drone", properties -> new DroneItem(properties,true), equipmentProperties("training_drone"));
     public static final Item CONTROLLER = register("controller", ControllerItem::new, equipmentProperties("controller"));
-    public static final Item FPV_GOGGLES = register("fpv_goggles",p->new net.minecraft.world.item.ArmorItem(net.minecraft.world.item.ArmorMaterials.LEATHER,net.minecraft.world.item.ArmorItem.Type.HELMET,p),equipmentProperties("fpv_goggles"));
+    public static final Item FPV_GOGGLES = register("fpv_goggles",io.github.riveyder.shahed.item.GogglesItem::new,equipmentProperties("fpv_goggles"));
 
     public static final Item QUAD=register("quad",p->new DroneItem(p,false,io.github.riveyder.shahed.entity.AircraftKind.QUAD),equipmentProperties("quad"));
     public static final Item CONTACT_QUAD=register("contact_quad",p->new DroneItem(p,false,io.github.riveyder.shahed.entity.AircraftKind.CONTACT),equipmentProperties("contact_quad"));
