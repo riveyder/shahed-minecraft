@@ -1,4 +1,4 @@
-name: Build Minecraft 26.2 mod
+name: Build Fabric targets
 
 on:
   push:
@@ -12,22 +12,43 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft: ['1.20.1', '1.21.1', '26.2']
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Java 25
+      - name: Set up compiler toolchains and Gradle JVM
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '25'
+          java-version: |
+            17
+            21
+            25
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Set up Gradle and validate wrapper
         uses: gradle/actions/setup-gradle@v4
       - name: Validate editable model and resource references
-        run: python3 docs/model/test_overhaul.py
-      - name: Build without Minecraft runtime tests
+        if: matrix.minecraft == '26.2'
+        run: python docs/model/test_overhaul.py
+      - name: Build 26.2 without Minecraft runtime tests
+        if: matrix.minecraft == '26.2'
         run: ./gradlew build -x check -x test -x runGameTest --no-daemon
+      - name: Build legacy target without Minecraft runtime tests
+        if: matrix.minecraft != '26.2'
+        run: ./gradlew -p ports -Pmc=${{ matrix.minecraft }} build -x test --no-daemon
+      - name: Audit 26.2 artifact
+        if: matrix.minecraft == '26.2'
+        run: python -B ports/tools/audit_jar.py 26.2 build/libs/shahed-fpv-mayhem-1.0.1+mc26.2.jar
+      - name: Audit legacy artifact
+        if: matrix.minecraft != '26.2'
+        run: python -B ports/tools/audit_jar.py ${{ matrix.minecraft }}
       - name: Upload mod and sources
         uses: actions/upload-artifact@v4
         with:
-          name: shahed-fpv-mayhem-mc26.2
-          path: build/libs/*.jar
+          name: shahed-fpv-mayhem-mc${{ matrix.minecraft }}
+          path: ${{ matrix.minecraft == '26.2' && 'build/libs/*.jar' || format('ports/build/{0}/libs/*.jar', matrix.minecraft) }}
           if-no-files-found: error
